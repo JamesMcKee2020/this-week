@@ -71,14 +71,27 @@ preserves).
   Job tracker, it still lives in this app's Done log, and the Done screen
   can download a job-search CSV with the same columns as the Job tracker's
   own CSV export.
-- **Paste a list, with review.** The inbox accepts pasted lines (one task
-  per line, `#tags` pulled out) and shows them for review before adding -
-  lines ending in a colon start unticked as likely headings (a hint, not
-  full Notes structure parsing - headings without colons are for the owner
-  to untick). Pasting from
+- **Paste a list, with review and headings.** The inbox accepts pasted
+  lines (one task per line, `#tags` pulled out) and shows them for review
+  before adding. Every line can be flipped between task and heading:
+  lines ending in a colon start marked as headings, but any line can be
+  tapped to change it - nothing is decided automatically. A heading line
+  is never added as a task; instead it becomes a `#tag` (words
+  lowercased, punctuation stripped, spaces to hyphens) on each ticked
+  task below it, so pasted group labels like "Errands:" organise the
+  tasks beneath them instead of cluttering the inbox. Pasting from
   Notes brings the words only: ticks, crossings-out and formatting do not
   survive the clipboard, so a finished item looks like any other line and
   the review step is where it gets unticked.
+- **Delete: swipe or button, with undo.** On a touch screen, swiping a
+  task card left reveals a red Delete button (vertical scrolling still
+  wins - a mostly-up-down drag never triggers it), and tapping anywhere
+  else or tapping the card itself dismisses it. The task sheet keeps its
+  own Delete button as the non-gesture route. Either way, a deletion is
+  never immediate loss: an inline message offers Undo, which restores the
+  task and its photos exactly as they were. Swipe-to-delete is verified
+  with synthetic touch events in desktop Chrome's mobile emulation; it is
+  expected but untested on an actual iPhone.
 - **Photos, screenshots, and pasted images.** Photo buttons accept the
   camera, the photo library, or the file picker (where screenshots saved to
   Files live). An image copied anywhere can be pasted straight onto the
