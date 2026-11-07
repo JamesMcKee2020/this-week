@@ -287,7 +287,7 @@ function addDays(ds,n){const d=new Date(ds+'T12:00:00');d.setDate(d.getDate()+n)
 function weekStart(){const d=new Date();const s=new Date(d);s.setDate(d.getDate()-d.getDay());return isoDate(s);} // Sunday
 function niceDate(ds){const d=new Date(ds+'T12:00:00');return d.toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'});}
 function hoursText(min){if(min<60)return min+'m';const h=min/60;return (Number.isInteger(h)?h:h.toFixed(1))+'h';}
-function sizeText(min){const f=SIZES.find(s=>s[0]===min);return f?f[1]:hoursText(min);}
+function sizeText(min){if(min==null)return null;const f=SIZES.find(s=>s[0]===min);return f?f[1]:hoursText(min);}
 function effortText(e){const f=EFFORTS.find(x=>x[0]===e);return f?f[1]:null;}
 let state={tasks:[],streams:[],photos:new Map()};
 function task(id){return state.tasks.find(t=>t.id===id);}
@@ -310,6 +310,7 @@ function migrate(t){
   if(typeof t.dueDate==='undefined') t.dueDate=null;
   if(typeof t.mustWeek!=='boolean') t.mustWeek=false;
   if(typeof t.mustWeekOf==='undefined') t.mustWeekOf=t.mustWeek?weekStart():null; // the week it was flagged for - a must is dated, not floating
+  if(typeof t.size==='undefined') t.size=null; // unknown until rated - existing assigned sizes are kept as they are, never rewritten
   if(typeof t.doneDate==='undefined') t.doneDate=null; // v1 completions had no recorded date - shown as 'date not recorded'
   if(typeof t.outcome!=='string') t.outcome='';
   if(typeof t.ei==='undefined') t.ei=null;
@@ -317,7 +318,7 @@ function migrate(t){
 }
 async function saveTask(t){await idbPut('tasks',JSON.parse(JSON.stringify(t)));}
 async function newTask(partial){
-  const t=migrate(Object.assign({id:uid(),title:'',streamId:null,kind:'task',size:60,col:'inbox',order:Date.now(),
+  const t=migrate(Object.assign({id:uid(),title:'',streamId:null,kind:'task',size:null,col:'inbox',order:Date.now(),
     notBefore:null,notes:'',day:null,done:false,photos:[],course:null,chore:null,created:todayStr()},partial));
   state.tasks.push(t); await saveTask(t); return t;
 }
@@ -350,7 +351,7 @@ function metaBits(t){
   const bits=[];
   const s=stream(t.streamId); if(s) bits.push('<span class="dot" style="background:'+s.color+'"></span>'+esc(s.name));
   for(const g of (t.tags||[])) bits.push('#'+esc(g));
-  bits.push(sizeText(t.size));
+  const sz=sizeText(t.size); if(sz) bits.push(sz);
   const ef=effortText(t.effort); if(ef) bits.push(ef);
   if(isParked(t)) bits.push('parked until '+niceDate(t.notBefore));
   if(t.photos&&t.photos.length) bits.push('📷 '+t.photos.length);
@@ -437,9 +438,10 @@ function renderNow(){
   // matches
   const colRank={now:0,next:1,later:2,inbox:3};
   const pool=visibleTasks().filter(t=>t.col!=='inbox'&&!isParked(t));
-  const fits=pool.filter(t=>(!fitTime||t.size<=fitTime)&&(!fitEffort||t.effort===fitEffort));
+  // a fit must be proven: unknown size never counts as fitting a time budget
+  const fits=pool.filter(t=>(!fitTime||(t.size!=null&&t.size<=fitTime))&&(!fitEffort||t.effort===fitEffort));
   fits.sort((a,b)=>((b.mustWeek?1:0)-(a.mustWeek?1:0))||(colRank[a.col]-colRank[b.col])||(a.order-b.order));
-  const unrated=fitEffort?pool.filter(t=>!t.effort&&(!fitTime||t.size<=fitTime)):[];
+  const unrated=(fitTime||fitEffort)?pool.filter(t=>!fits.includes(t)&&(t.size==null||(fitEffort&&!t.effort))):[];
   const fh=$('#fitList');
   if(!fits.length){
     fh.innerHTML='<div class="cap" style="padding:8px 2px">Nothing sorted fits that. '+(pool.length?'Try more time, or a different mood.':'Sort some inbox items first - fits come from Now/Next/Later.')+'</div>';
@@ -447,7 +449,7 @@ function renderNow(){
     fh.innerHTML=fits.map(t=>cardHtml(t,{controls:'<div class="ctl"><button data-done="'+t.id+'">✓ Done</button></div>'})).join('');
   }
   if(unrated.length){
-    fh.innerHTML+='<div class="cap" style="margin:10px 0 4px">Effort not rated yet - worth a look:</div>'
+    fh.innerHTML+='<div class="cap" style="margin:10px 0 4px">Size or effort not rated yet - can\'t say these fit, worth a look:</div>'
       +unrated.slice(0,5).map(t=>cardHtml(t)).join('');
   }
   bindCards(fh);
@@ -465,7 +467,7 @@ function renderWeek(){
   for(let i=0;i<7;i++){
     const ds=addDays(ws,i), d=new Date(ds+'T12:00:00');
     const list=visibleTasks().filter(t=>t.day===ds).sort((a,b)=>a.order-b.order);
-    const tot=list.reduce((a,t)=>a+t.size,0);
+    const tot=list.reduce((a,t)=>a+(t.size||0),0);
     const isToday=ds===todayStr();
     html+='<div class="dayrow'+(isToday?' today':'')+'"><div class="dh">'
       +'<div class="dname">'+d.toLocaleDateString(undefined,{weekday:'short'})+'<span class="dnum">'+d.toLocaleDateString(undefined,{day:'numeric',month:'short'})+'</span></div>'
@@ -567,7 +569,7 @@ function openSheet(id,preset){
   preset=preset||{};
   sheetTask=id?task(id):null;
   const sh=$('#sheet'); const isNew=!sheetTask;
-  const t=sheetTask||migrate(Object.assign({id:'',title:'',streamId:null,kind:'task',size:60,
+  const t=sheetTask||migrate(Object.assign({id:'',title:'',streamId:null,kind:'task',size:null,
     col:(preset.day?'now':'inbox'),order:Date.now(),notBefore:null,notes:'',day:preset.day||null,
     done:false,photos:[],course:null,chore:null,created:todayStr()},{}));
   const draft=JSON.parse(JSON.stringify(t));
@@ -580,6 +582,7 @@ function openSheet(id,preset){
       +'<button class="chip'+(!t.streamId?' sel':'')+'" data-fs="">None</button>'
       +state.streams.map(s=>'<button class="chip'+(t.streamId===s.id?' sel':'')+'" data-fs="'+s.id+'"><span class="dot" style="background:'+s.color+'"></span>'+esc(s.name)+'</button>').join('')+'</div>';
   html+='<label class="f">Rough size</label><div id="fSizes">'
+      +'<button class="chip'+(t.size==null?' sel':'')+'" data-fsize="">Not sure</button>'
       +SIZES.map(([m,l])=>'<button class="chip'+(t.size===m?' sel':'')+'" data-fsize="'+m+'">'+l+'</button>').join('')+'</div>';
   html+='<label class="f">Mental effort</label><div id="fEfforts">'
       +'<button class="chip'+(!t.effort?' sel':'')+'" data-fe="">Not rated</button>'
@@ -621,7 +624,7 @@ function openSheet(id,preset){
     $('#fNewTag').value='';
   };
   sh.querySelectorAll('[data-fs]').forEach(b=>b.onclick=()=>{draft.streamId=b.dataset.fs||null;syncChips('fStreams',b);});
-  sh.querySelectorAll('[data-fsize]').forEach(b=>b.onclick=()=>{draft.size=+b.dataset.fsize;syncChips('fSizes',b);});
+  sh.querySelectorAll('[data-fsize]').forEach(b=>b.onclick=()=>{draft.size=b.dataset.fsize?+b.dataset.fsize:null;syncChips('fSizes',b);});
   sh.querySelectorAll('[data-fe]').forEach(b=>b.onclick=()=>{draft.effort=b.dataset.fe||null;syncChips('fEfforts',b);});
   sh.querySelectorAll('[data-fcol]').forEach(b=>b.onclick=()=>{draft.col=b.dataset.fcol;syncChips('fCols',b);});
   sh.querySelectorAll('[data-fmust]').forEach(b=>b.onclick=()=>{draft.mustWeek=!!b.dataset.fmust;draft.mustWeekOf=draft.mustWeek?weekStart():null;syncChips('fMust',b);});
@@ -673,7 +676,7 @@ function renderKindExtra(draft){
     const lg=host.querySelector('#fLog');
     if(lg) lg.onclick=()=>{
       const left=courseLeft({course:{totalMin:+(host.querySelector('#fTotalH').value||0)*60,loggedMin:draft.course.loggedMin}});
-      const mins=Math.min(draft.size,Math.max(15,left));
+      const mins=Math.min(draft.size||60,Math.max(15,left)); // unknown size: fall back to a 1h session guess, recorded as time logged, not as the task's size
       draft.course.loggedMin+=mins;
       if(sheetTask&&sheetTask.course){sheetTask.course.loggedMin=draft.course.loggedMin;saveTask(sheetTask);}
       renderKindExtra(draft); renderAll();
@@ -938,7 +941,7 @@ async function quickCaptureMany(lines){
   for(const raw of lines){
     const l=(raw||'').trim(); if(!l) continue;
     const p=parseTaskLine(l); if(!p.clean) continue;
-    items.push(migrate(Object.assign({id:uid(),title:p.clean,streamId:null,kind:'task',size:60,col:'inbox',order:Date.now()+items.length,
+    items.push(migrate(Object.assign({id:uid(),title:p.clean,streamId:null,kind:'task',size:null,col:'inbox',order:Date.now()+items.length,
       notBefore:null,notes:'',day:null,done:false,photos:[],course:null,chore:null,created:todayStr()},{tags:p.tags})));
   }
   if(!items.length) return 0;
@@ -980,7 +983,7 @@ $('#pastePreviewBtn').onclick=()=>{
     try{
       const n=await quickCaptureMany(keep);
       $('#pasteText').value=''; host.innerHTML=''; $('#pasteArea').classList.add('hidden');
-      flash(n+' task'+(n===1?'':'s')+' added to the inbox. Check each one - anything misread is yours to fix.');
+      flash(n+' task'+(n===1?'':'s')+' added to the inbox - review each one there.');
     }catch(e){
       ev.currentTarget.disabled=false;
       flash('Nothing was added - the batch is all-or-nothing, so no partial list was saved. It is safe to try again.');
