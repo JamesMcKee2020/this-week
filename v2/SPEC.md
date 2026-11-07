@@ -14,7 +14,9 @@ preserves).
 - **Intake first.** The opening screen is a capture box (text, photo, or a
   pasted list) above the unsorted Inbox. The week calendar is a collapsed
   section inside the Now screen - a view of what you assigned to days, not
-  the front door.
+  the front door. New captures carry no assumed size: duration stays
+  unknown until the owner rates it, so the Now screen never silently treats
+  an unknown task as a one-hour task.
 - **Tags.** Any number of lowercase tags per task ("groceries",
   "home-project", "job-search"). The Tags screen retrieves everything open
   under a tag, independent of dates. The `groceries` tag renders as a
@@ -23,7 +25,11 @@ preserves).
 - **Mental effort.** Each task can be rated Mindless / Some thought /
   Deep focus. Combined with rough size, the Now screen answers "I have an
   hour and want something mindless": pick time + effort, get the tasks that
-  fit. Unrated tasks are listed separately so nothing hides.
+  fit. Size and effort both start unknown ("Not sure" / "Not rated") on
+  new captures - a fit must be proven, so tasks with unknown size never
+  count as fitting a time budget; they are listed separately as "can't say
+  these fit, worth a look" instead. Existing tasks keep whatever size they
+  already had; nothing old is rewritten.
 - **Must do this week.** A flag stamped with the week it was set for
   (`mustWeekOf`), not a floating forever-flag. Flagged tasks sit at the top
   of the Now screen until done or deliberately given a day. When the week
@@ -96,7 +102,7 @@ preserves).
 {
   "id": "t…", "title": "…", "streamId": "t…|null",
   "kind": "task|chore|course",
-  "size": 60,
+  "size": 60,              // minutes, or null = not rated yet
   "col": "inbox|now|next|later",
   "order": 1761…,
   "tags": ["groceries"],
