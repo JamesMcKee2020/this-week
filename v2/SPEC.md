@@ -52,7 +52,14 @@ preserves).
   and saving with the EI box ticked but no type picked is refused rather
   than guessed. A task that already has an EI entry says so and cannot be
   logged twice; the save button disables on tap so a double-tap cannot
-  double-write. Caveat: this only works where both apps share browser
+  double-write. Entries carry a `twTaskId` stamp and every write is also
+  remembered in a small localStorage registry that restoring an older
+  backup cannot erase, so restoring an old backup and completing the same
+  task again links the existing entry instead of duplicating it (verified
+  by replay test). A lookalike entry (same title, type and date, but not
+  provably the same task) is never skipped or written silently: the done
+  sheet stops and asks "write another / keep the existing one". Caveat:
+  this only works where both apps share browser
   storage (tested: two tabs of the same desktop browser). Home-screen icons
   on a phone may keep separate storage; if the entry does not appear in the
   Job tracker, it still lives in this app's Done log, and the Done screen
@@ -60,7 +67,9 @@ preserves).
   own CSV export.
 - **Paste a list, with review.** The inbox accepts pasted lines (one task
   per line, `#tags` pulled out) and shows them for review before adding -
-  lines ending in a colon start unticked as likely headings. Pasting from
+  lines ending in a colon start unticked as likely headings (a hint, not
+  full Notes structure parsing - headings without colons are for the owner
+  to untick). Pasting from
   Notes brings the words only: ticks, crossings-out and formatting do not
   survive the clipboard, so a finished item looks like any other line and
   the review step is where it gets unticked.
@@ -69,11 +78,17 @@ preserves).
   Files live). An image copied anywhere can be pasted straight onto the
   page - it becomes a new photo task, ready to name. Clipboard image paste
   is verified in desktop Chrome; phone browser support for pasting images
-  is expected but untested on an actual iPhone.
+  is expected but untested on an actual iPhone. Photos and pasted images
+  are stored as-is on the task - this build does not read or interpret
+  image contents.
 - **Restore asks first.** Restoring a backup opens a choice instead of
   acting silently: merge (backup items are added or updated, device-only
   items stay) or replace (the device is wiped to match the backup), with
-  counts from both sides shown before anything changes.
+  counts from both sides shown before anything changes. The write itself is
+  a single all-or-nothing transaction; a failure leaves the device
+  untouched and says so inline.
+- **No native popups.** Import, restore and completion outcomes are reported
+  in an inline status line at the top of the screen, not alert() dialogs.
 
 ## Task record (v2)
 
