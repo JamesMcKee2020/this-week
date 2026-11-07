@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#faf7f2">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="This Week v2">
+<link rel="manifest" href="manifest.webmanifest">
+<script>
+// Home-screen icon generated at runtime (no binary file needed).
+(function(){
+  try{
+    var c=document.createElement('canvas'); c.width=c.height=180;
+    var x=c.getContext('2d');
+    x.fillStyle='#faf7f2'; x.fillRect(0,0,180,180);
+    x.strokeStyle='#5b7f63'; x.lineWidth=10;
+    x.beginPath(); x.arc(90,90,56,0,6.2832); x.stroke();
+    x.lineCap='round'; x.lineJoin='round';
+    x.beginPath(); x.moveTo(63,92); x.lineTo(84,113); x.lineTo(120,70); x.stroke();
+    x.fillStyle='#5b7f63'; x.font='bold 34px sans-serif'; x.textAlign='center';
+    x.fillText('2',150,158);
+    var link=document.createElement('link');
+    link.rel='apple-touch-icon';
+    link.href=c.toDataURL('image/png');
+    document.head.appendChild(link);
+  }catch(e){}
+})();
+</script>
+<title>This Week v2</title>
+<style>
+:root{
+  --paper:#faf7f2; --card:#ffffff; --ink:#26221c; --ink-2:#6b6357; --ink-3:#9a9184;
+  --line:#e8e2d8; --accent:#5b7f63; --accent-soft:#e9f0ea;
+  --r:14px; --font-d:Georgia,'Times New Roman',serif; --font-t:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;background:var(--paper);color:var(--ink);font-family:var(--font-t);font-size:16px;line-height:1.45}
+body{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:pointer}
+input,textarea,select{font:inherit;color:inherit}
+.wrap{max-width:680px;margin:0 auto;padding:0 16px}
+header.app{padding:24px 16px 8px;max-width:680px;margin:0 auto}
+header.app h1{font-family:var(--font-d);font-weight:400;font-size:30px;margin:0;letter-spacing:.2px}
+header.app .sub{color:var(--accent);font-size:13px;margin-top:2px}
+nav.tabs{position:fixed;left:0;right:0;bottom:0;background:rgba(250,247,242,.96);backdrop-filter:blur(8px);border-top:1px solid var(--line);display:flex;z-index:40;padding-bottom:env(safe-area-inset-bottom)}
+nav.tabs button{flex:1;padding:13px 0 11px;text-align:center;font-size:12.5px;color:var(--ink-2);border-top:2px solid transparent}
+nav.tabs button.on{color:var(--ink);border-top-color:var(--ink);font-weight:600}
+nav.tabs button .badge{display:inline-block;min-width:17px;padding:0 4px;border-radius:9px;background:var(--accent);color:#fff;font-size:10.5px;line-height:17px;margin-left:3px;vertical-align:1px}
+.view{display:none}.view.on{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin:8px 0}
+.muted{color:var(--ink-2)}.small{font-size:13px}.tiny{font-size:12px}
+.cap{font-size:12.5px;color:var(--ink-3);margin:2px 0 0}
+.btn{display:inline-block;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:9px 16px;font-size:14px;margin:4px 6px 4px 0}
+.btn.primary{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.btn.soft{background:var(--accent-soft);border-color:transparent;color:var(--accent)}
+.btn.warn{color:#a33}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:12.5px;color:var(--ink-2);margin:2px 4px 2px 0}
+.chip.sel{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex:none}
+input[type=text],input[type=date],textarea,select{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fff;font-size:15px}
+textarea{min-height:74px;resize:vertical}
+label.f{display:block;font-size:12.5px;color:var(--ink-2);margin:12px 0 4px}
+h2.sec{font-family:var(--font-d);font-weight:400;font-size:21px;margin:20px 0 6px}
+h2.sec .n{font-family:var(--font-t);font-size:12px;color:var(--ink-3);font-weight:400}
+/* capture */
+.capturebox input{width:100%;border:1px solid var(--line);border-radius:12px;padding:13px 14px;font-size:16px;background:#fff}
+.capturebox .row{display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap}
+/* task cards */
+.tcard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:6px 0}
+.tcard .tt{font-size:15px}
+.tcard .meta{display:flex;align-items:center;gap:8px;margin-top:5px;flex-wrap:wrap;font-size:12px;color:var(--ink-2)}
+.tcard .ctl{display:flex;gap:4px;margin-top:7px;flex-wrap:wrap}
+.tcard .ctl button{font-size:12px;color:var(--ink-2);border:1px solid var(--line);border-radius:8px;padding:3px 8px}
+.tcard.parked{opacity:.62}
+.tcard.done .tt{text-decoration:line-through;color:var(--ink-3)}
+.tcard.must{border-left:3px solid var(--accent)}
+.duepill{font-size:11.5px;border:1px solid #c9a3a3;color:#a3534f;border-radius:999px;padding:1px 8px}
+.duepill.soon{border-color:#d9c79a;color:#8a6d2f}
+.photos{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.photos img{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+/* groceries checklist */
+.gitem{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px 14px;margin:6px 0;font-size:16px}
+.gitem .box{width:24px;height:24px;border:2px solid var(--ink-3);border-radius:7px;flex:none;display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px}
+.gitem.done{opacity:.55}.gitem.done .tt{text-decoration:line-through}
+.gitem.done .box{background:var(--accent);border-color:var(--accent)}
+/* week */
+.dayrow{border-bottom:1px solid var(--line);padding:10px 2px 12px}
+.dayrow .dh{display:flex;align-items:baseline;justify-content:space-between}
+.dayrow .dname{font-family:var(--font-d);font-size:20px}
+.dayrow .dname .dnum{font-family:var(--font-t);font-size:13px;color:var(--ink-2);margin-left:8px}
+.dayrow.today .dname{color:var(--accent)}
+.daytotal{font-size:12.5px;color:var(--ink-3)}
+.mini{font-size:12px;color:var(--ink-2);border:1px solid var(--line);border-radius:999px;padding:3px 9px;margin-left:6px}
+/* sheet */
+.sheet-back{position:fixed;inset:0;background:rgba(38,34,28,.32);z-index:50;display:none}
+.sheet{position:fixed;left:0;right:0;bottom:0;background:var(--paper);border-radius:18px 18px 0 0;z-index:51;max-height:88vh;overflow:auto;padding:18px 18px calc(22px + env(safe-area-inset-bottom));display:none;box-shadow:0 -8px 30px rgba(0,0,0,.12)}
+.sheet.on,.sheet-back.on{display:block}
+.sheet h2{font-family:var(--font-d);font-weight:400;font-size:24px;margin:2px 0 4px}
+.x{position:absolute;right:14px;top:12px;font-size:15px;color:var(--ink-2);border:1px solid var(--line);border-radius:50%;width:32px;height:32px;line-height:30px;text-align:center;background:var(--card)}
+.notice{border:1px solid var(--line);background:var(--accent-soft);border-radius:12px;padding:10px 12px;font-size:13.5px;color:var(--ink-2);margin:10px 0}
+.closing{margin:26px 0 10px;text-align:center;color:var(--ink-3);font-size:13px;font-family:var(--font-d);font-style:italic}
+.hidden{display:none!important}
+.collapsed .coll{display:none}
+.dategroup{font-family:var(--font-d);font-size:17px;margin:16px 0 4px;color:var(--ink-2)}
+</style>
+</head>
+<body>
+<header class="app">
+  <h1>This Week</h1>
+  <div class="sub" id="weekLabel"></div>
+</header>
+
+<main class="wrap">
+  <section id="view-inbox" class="view on">
+    <div id="persistNotice"></div>
+    <div class="card capturebox">
+      <input type="text" id="quickTitle" placeholder="What's on your mind?" enterkeyhint="done" autocomplete="off">
+      <div class="row">
+        <button class="btn primary" id="quickAddBtn">Add to inbox</button>
+        <button class="btn" id="quickPhotoBtn">📷 Photo</button>
+        <button class="btn" id="pasteListBtn">📋 Paste a list</button>
+        <input type="file" id="quickPhotoFile" accept="image/*" class="hidden">
+      </div>
+      <div id="pasteArea" class="hidden" style="margin-top:10px">
+        <textarea id="pasteText" placeholder="One task per line. Add #tags at the end of a line, e.g.&#10;Buy coffee #groceries&#10;Sort the boxes #home-project"></textarea>
+        <button class="btn soft" id="pasteMakeBtn">Make tasks</button>
+        <span class="cap">Handy after sending a photo of a paper list to Instinct - paste the draft list it gives back, then fix anything here.</span>
+      </div>
+    </div>
+    <h2 class="sec">Inbox <span class="n" id="inboxCount"></span></h2>
+    <div class="cap" style="margin-bottom:6px">Captured, not yet sorted. Tap one to give it a tag, size and effort.</div>
+    <div id="inboxList"></div>
+  </section>
+
+  <section id="view-now" class="view">
+    <h2 class="sec">Must do this week <span class="n" id="mustCount"></span></h2>
+    <div id="mustList"></div>
+    <h2 class="sec">What fits right now</h2>
+    <div class="card">
+      <div class="small muted">Time you have</div>
+      <div id="fitTimes" style="margin:4px 0 8px"></div>
+      <div class="small muted">And your head feels like</div>
+      <div id="fitEfforts" style="margin:4px 0 0"></div>
+    </div>
+    <div id="fitList"></div>
+    <div id="noFitMust"></div>
+    <div class="card collapsed" id="weekCard" style="margin-top:16px">
+      <button id="weekToggle" style="width:100%;text-align:left;font-size:15px"><b>Days of the week</b> <span class="cap">- a view of what you assigned to days, not the front door. Tap to open.</span></button>
+      <div class="coll" id="weekDays" style="margin-top:8px"></div>
+    </div>
+  </section>
+
+  <section id="view-tags" class="view">
+    <h2 class="sec">Find by tag</h2>
+    <div class="cap" style="margin-bottom:8px">Capture once, find by what kind of thing it is. Groceries shows as a checklist.</div>
+    <div id="tagCloud"></div>
+    <div id="tagView"></div>
+  </section>
+
+  <section id="view-done" class="view">
+    <h2 class="sec">Done <span class="n" id="doneCount"></span></h2>
+    <div class="cap" style="margin-bottom:8px">A record, so you don't have to remember what happened or when.</div>
+    <div id="doneTools" style="margin-bottom:6px"></div>
+    <div id="doneList"></div>
+  </section>
+
+  <section id="view-more" class="view">
+    <div class="card">
+      <b>Work streams</b>
+      <div class="cap">Colour-coded areas of life. Tasks pick one, or none.</div>
+      <div id="streamList" style="margin-top:8px"></div>
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <input type="text" id="newStreamName" placeholder="New stream name" style="flex:1">
+        <button class="btn soft" id="addStreamBtn">Add</button>
+      </div>
+    </div>
+    <div class="card">
+      <b>Backup</b>
+      <div class="cap">Everything lives on this device only. Export a copy whenever you like - a plain JSON file you can read, keep, or restore later. Photos are included. Restores from version 1 backups too.</div>
+      <div style="margin-top:8px">
+        <button class="btn" id="exportBtn">Download backup</button>
+        <button class="btn" id="importBtn">Restore from file</button>
+        <input type="file" id="importFile" accept="application/json,.json" class="hidden">
+      </div>
+      <label class="f">Or paste a backup here</label>
+      <textarea id="importText" placeholder='{"version":2,...}'></textarea>
+      <button class="btn soft" id="importTextBtn">Restore pasted backup</button>
+    </div>
+    <div class="card">
+      <b>Photo of a paper list?</b>
+      <div class="cap">This standalone, offline build can't read handwriting or photos - recognition needs a service, and your list never leaves this device. What works: snap the photo here so it stays with the task, and/or send the photo to Instinct in your chat, then paste the draft list it gives back into the inbox (Paste a list). You check every line before it becomes a task.</div>
+    </div>
+    <div class="card">
+      <b>Start fresh or try samples</b>
+      <div class="cap">Samples are generic example tasks so you can see how it feels. Remove them any time.</div>
+      <div style="margin-top:8px">
+        <button class="btn" id="sampleBtn">Add sample tasks</button>
+        <button class="btn warn" id="wipeBtn">Erase everything</button>
+      </div>
+    </div>
+    <div class="card">
+      <b>Put it on your home screen</b>
+      <div class="cap">iPhone: open this page in Safari, tap Share, then "Add to Home Screen". Android: browser menu, "Add to Home screen". A home-screen icon keeps its own separate storage, so use the app in the same place (same icon, or same browser) to keep one list.</div>
+    </div>
+    <div class="card">
+      <b>What stays where</b>
+      <div class="cap">Tasks, streams, photos and settings are stored only in this browser on this device (IndexedDB). Nothing is sent anywhere - the app makes no network requests. Clearing browser data or removing the home-screen app erases it, so keep a backup if it matters.</div>
+    </div>
+    <div class="card">
+      <b>Prefer the classic layout?</b>
+      <div class="cap"><a href="../" style="color:var(--accent)">Open version 1</a> - same device, same list. Both versions read the same data, so you can switch back and forth while you try this one.</div>
+    </div>
+    <div class="closing">Version 2 - intake first. Your list lives on this device; nothing here sends you reminders.</div>
+  </section>
+</main>
+
+<nav class="tabs">
+  <button data-v="view-inbox" class="on" id="tab-inbox">Inbox</button>
+  <button data-v="view-now" id="tab-now">Now</button>
+  <button data-v="view-tags">Tags</button>
+  <button data-v="view-done">Done</button>
+  <button data-v="view-more">More</button>
+</nav>
+
+<div class="sheet-back" id="sheetBack"></div>
+<div class="sheet" id="sheet"></div>
+<script>
+'use strict';
+/* ============ storage: IndexedDB with in-memory fallback (same DB as v1) ============ */
+const DB_NAME='this-week', DB_VER=1;
+let db=null, memFallback=false;
+const mem={tasks:new Map(),streams:new Map(),photos:new Map(),meta:new Map()};
+function openDB(){return new Promise(res=>{
+  let req;
+  try{ req=indexedDB.open(DB_NAME,DB_VER); }catch(e){ memFallback=true; return res(null); }
+  req.onupgradeneeded=ev=>{
+    const d=ev.target.result;
+    d.createObjectStore('tasks',{keyPath:'id'});
+    d.createObjectStore('streams',{keyPath:'id'});
+    d.createObjectStore('photos',{keyPath:'id'});
+    d.createObjectStore('meta',{keyPath:'k'});
+  };
+  req.onsuccess=()=>res(req.result);
+  req.onerror=()=>{memFallback=true;res(null);};
+  req.onblocked=()=>{memFallback=true;res(null);};
+});}
+function tx(store,mode){return db.transaction(store,mode).objectStore(store);}
+function idbPut(store,val){return new Promise((res,rej)=>{
+  if(memFallback){mem[store].set(store==='meta'?val.k:val.id,val);return res();}
+  const r=tx(store,'readwrite').put(val); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error);
+});}
+function idbDel(store,key){return new Promise((res,rej)=>{
+  if(memFallback){mem[store].delete(key);return res();}
+  const r=tx(store,'readwrite').delete(key); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error);
+});}
+function idbAll(store){return new Promise((res,rej)=>{
+  if(memFallback){return res([...mem[store].values()]);}
+  const r=tx(store,'readonly').getAll(); r.onsuccess=()=>res(r.result||[]); r.onerror=()=>rej(r.error);
+});}
+
+/* ============ model ============ */
+const SIZES=[[15,'15m'],[30,'30m'],[60,'1h'],[120,'2h'],[240,'half day'],[480,'full day']];
+const COLS=[['inbox','Inbox'],['now','Now'],['next','Next'],['later','Later']];
+const EFFORTS=[['low','Mindless'],['med','Some thought'],['high','Deep focus']];
+const STREAM_COLORS=['#5b7f63','#7a6a9e','#b0764a','#4a7a9e','#a3534f','#8a8548'];
+const EI_TYPES=['Reviewing opportunities','CV / cover letter preparation','Job tools / agency registration','Workshop / job fair','Networking','Contacting employer','Application submitted','Interview','Skills evaluation'];
+const EI_LS_KEY='jobTrackerActivitiesV1'; // the Job tracker app's EI log (same browser storage, same site)
+const uid=()=> 't'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const todayStr=()=>isoDate(new Date());
+function isoDate(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function addDays(ds,n){const d=new Date(ds+'T12:00:00');d.setDate(d.getDate()+n);return isoDate(d);}
+function weekStart(){const d=new Date();const s=new Date(d);s.setDate(d.getDate()-d.getDay());return isoDate(s);} // Sunday
+function niceDate(ds){const d=new Date(ds+'T12:00:00');return d.toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'});}
+function hoursText(min){if(min<60)return min+'m';const h=min/60;return (Number.isInteger(h)?h:h.toFixed(1))+'h';}
+function sizeText(min){const f=SIZES.find(s=>s[0]===min);return f?f[1]:hoursText(min);}
+function effortText(e){const f=EFFORTS.find(x=>x[0]===e);return f?f[1]:null;}
+let state={tasks:[],streams:[],photos:new Map()};
+function task(id){return state.tasks.find(t=>t.id===id);}
+function stream(id){return state.streams.find(s=>s.id===id);}
+function isParked(t){return t.notBefore && t.notBefore>todayStr();}
+function visibleTasks(){return state.tasks.filter(t=>!t.done);}
+function courseLeft(t){return Math.max(0,(t.course? (t.course.totalMin-t.course.loggedMin):0));}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function isJobTask(t){return (t.tags||[]).some(g=>g.indexOf('job')!==-1);}
+function allTags(){
+  const m=new Map();
+  for(const t of state.tasks){ if(t.done) continue; for(const g of (t.tags||[])) m.set(g,(m.get(g)||0)+1); }
+  return [...m.entries()].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0]));
+}
+/* fill in fields introduced in v2 - runs on every load, so v1 data migrates silently */
+function migrate(t){
+  if(!Array.isArray(t.tags)) t.tags=[];
+  if(t.effort!==null&&t.effort!=='low'&&t.effort!=='med'&&t.effort!=='high') t.effort=null;
+  if(typeof t.dueDate==='undefined') t.dueDate=null;
+  if(typeof t.mustWeek!=='boolean') t.mustWeek=false;
+  if(typeof t.doneDate==='undefined') t.doneDate=null; // v1 completions had no recorded date - shown as 'date not recorded'
+  if(typeof t.outcome!=='string') t.outcome='';
+  if(typeof t.ei==='undefined') t.ei=null;
+  return t;
+}
+async function saveTask(t){await idbPut('tasks',JSON.parse(JSON.stringify(t)));}
+async function newTask(partial){
+  const t=migrate(Object.assign({id:uid(),title:'',streamId:null,kind:'task',size:60,col:'inbox',order:Date.now(),
+    notBefore:null,notes:'',day:null,done:false,photos:[],course:null,chore:null,created:todayStr()},partial));
+  state.tasks.push(t); await saveTask(t); return t;
+}
+async function removeTask(id){
+  const t=task(id); if(!t)return;
+  for(const pid of (t.photos||[])) await idbDel('photos',pid);
+  state.tasks=state.tasks.filter(x=>x.id!==id); await idbDel('tasks',id);
+}
+
+/* ============ rendering ============ */
+const $=s=>document.querySelector(s);
+let fitTime=null, fitEffort=null, activeTag=null;
+function renderAll(){
+  renderHeader(); renderInbox(); renderNow(); renderTags(); renderDone(); renderStreams(); renderTabBadges();
+}
+function renderHeader(){
+  const ws=weekStart();
+  $('#weekLabel').textContent='Week of '+niceDate(ws)+' - '+niceDate(addDays(ws,6));
+}
+function renderPersistNotice(){
+  const el=$('#persistNotice');
+  if(memFallback) el.innerHTML='<div class="notice"><b>Not saved.</b> This browser is blocking app storage (private mode or embedded preview), so changes last only while the page is open.</div>';
+  else el.innerHTML='';
+}
+function renderTabBadges(){
+  const n=visibleTasks().filter(t=>t.col==='inbox').length;
+  $('#tab-inbox').innerHTML='Inbox'+(n?'<span class="badge">'+n+'</span>':'');
+}
+function metaBits(t){
+  const bits=[];
+  const s=stream(t.streamId); if(s) bits.push('<span class="dot" style="background:'+s.color+'"></span>'+esc(s.name));
+  for(const g of (t.tags||[])) bits.push('#'+esc(g));
+  bits.push(sizeText(t.size));
+  const ef=effortText(t.effort); if(ef) bits.push(ef);
+  if(isParked(t)) bits.push('parked until '+niceDate(t.notBefore));
+  if(t.photos&&t.photos.length) bits.push('📷 '+t.photos.length);
+  if(t.kind==='course'&&t.course) bits.push(hoursText(courseLeft(t))+' left');
+  if(t.kind==='chore'&&t.chore) bits.push('every '+t.chore.everyN+' '+t.chore.unit);
+  return bits.join(' · ');
+}
+function duePill(t){
+  if(!t.dueDate||t.done)return '';
+  const td=todayStr();
+  if(t.dueDate<td) return '<span class="duepill">due '+niceDate(t.dueDate)+' - passed</span>';
+  if(t.dueDate<=addDays(td,3)) return '<span class="duepill soon">due '+niceDate(t.dueDate)+'</span>';
+  return '<span class="duepill" style="border-color:var(--line);color:var(--ink-2)">due '+niceDate(t.dueDate)+'</span>';
+}
+function cardHtml(t,opts){
+  opts=opts||{};
+  return '<div class="tcard'+(isParked(t)?' parked':'')+(t.mustWeek?' must':'')+'" data-open="'+t.id+'">'
+    +'<div class="tt">'+esc(t.title||'(untitled photo note)')+'</div>'
+    +'<div class="meta">'+metaBits(t)+duePill(t)+(t.day&&opts.showDay?' · '+niceDate(t.day):'')+'</div>'
+    +(opts.controls||'')
+    +'</div>';
+}
+function bindCards(host){
+  host.querySelectorAll('[data-open]').forEach(el=>el.onclick=ev=>{
+    if(ev.target.closest('button'))return;
+    openSheet(el.dataset.open);
+  });
+}
+/* ----- Inbox ----- */
+function renderInbox(){
+  const list=visibleTasks().filter(t=>t.col==='inbox').sort((a,b)=>(b.created||'').localeCompare(a.created||'')||b.order-a.order);
+  $('#inboxCount').textContent=list.length?list.length+' waiting':'';
+  const host=$('#inboxList');
+  if(!list.length){host.innerHTML='<div class="cap" style="padding:8px 2px">Inbox is empty. Capture whatever shows up; sort it when you are ready.</div>';return;}
+  host.innerHTML=list.map(t=>{
+    let ctl='<div class="ctl"><button data-sort="'+t.id+'">Sort…</button><button data-done="'+t.id+'">✓ Done</button></div>';
+    return cardHtml(t,{controls:ctl});
+  }).join('');
+  bindCards(host);
+  host.querySelectorAll('[data-sort]').forEach(el=>el.onclick=()=>openSheet(el.dataset.sort));
+  host.querySelectorAll('[data-done]').forEach(el=>el.onclick=()=>openDoneSheet(el.dataset.done));
+}
+/* ----- Now: must-this-week + what fits + week days ----- */
+function mustTasks(){return visibleTasks().filter(t=>t.mustWeek);}
+function renderNow(){
+  const must=mustTasks().sort((a,b)=>a.order-b.order);
+  $('#mustCount').textContent=must.length?must.length+' flagged':'';
+  const mh=$('#mustList');
+  if(!must.length){
+    mh.innerHTML='<div class="cap" style="padding:4px 2px">Nothing flagged yet. On any task, turn on "Must do this week" - no day needed.</div>';
+  } else {
+    mh.innerHTML=must.map(t=>{
+      let ctl='<div class="ctl">'+(t.day?'<button data-unday="'+t.id+'">off '+niceDate(t.day)+'</button>':'<button data-day="'+t.id+'">pick a day</button>')+'<button data-done="'+t.id+'">✓ Done</button></div>';
+      return cardHtml(t,{controls:ctl,showDay:false});
+    }).join('');
+  }
+  bindCards(mh);
+  mh.querySelectorAll('[data-day]').forEach(el=>el.onclick=()=>openDayPicker(el.dataset.day));
+  mh.querySelectorAll('[data-unday]').forEach(el=>el.onclick=async()=>{const t=task(el.dataset.unday);t.day=null;await saveTask(t);renderAll();});
+  mh.querySelectorAll('[data-done]').forEach(el=>el.onclick=()=>openDoneSheet(el.dataset.done));
+  // fit pickers
+  $('#fitTimes').innerHTML='<button class="chip'+(!fitTime?' sel':'')+'" data-ft="">Any time</button>'
+    +SIZES.map(([m,l])=>'<button class="chip'+(fitTime===m?' sel':'')+'" data-ft="'+m+'">'+l+'</button>').join('');
+  $('#fitEfforts').innerHTML='<button class="chip'+(!fitEffort?' sel':'')+'" data-fe="">Any mood</button>'
+    +EFFORTS.map(([k,l])=>'<button class="chip'+(fitEffort===k?' sel':'')+'" data-fe="'+k+'">'+l+'</button>').join('');
+  $('#fitTimes').querySelectorAll('[data-ft]').forEach(b=>b.onclick=()=>{fitTime=b.dataset.ft?+b.dataset.ft:null;renderNow();});
+  $('#fitEfforts').querySelectorAll('[data-fe]').forEach(b=>b.onclick=()=>{fitEffort=b.dataset.fe||null;renderNow();});
+  // matches
+  const colRank={now:0,next:1,later:2,inbox:3};
+  const pool=visibleTasks().filter(t=>t.col!=='inbox'&&!isParked(t));
+  const fits=pool.filter(t=>(!fitTime||t.size<=fitTime)&&(!fitEffort||t.effort===fitEffort));
+  fits.sort((a,b)=>((b.mustWeek?1:0)-(a.mustWeek?1:0))||(colRank[a.col]-colRank[b.col])||(a.order-b.order));
+  const unrated=fitEffort?pool.filter(t=>!t.effort&&(!fitTime||t.size<=fitTime)):[];
+  const fh=$('#fitList');
+  if(!fits.length){
+    fh.innerHTML='<div class="cap" style="padding:8px 2px">Nothing sorted fits that. '+(pool.length?'Try more time, or a different mood.':'Sort some inbox items first - fits come from Now/Next/Later.')+'</div>';
+  } else {
+    fh.innerHTML=fits.map(t=>cardHtml(t,{controls:'<div class="ctl"><button data-done="'+t.id+'">✓ Done</button></div>'})).join('');
+  }
+  if(unrated.length){
+    fh.innerHTML+='<div class="cap" style="margin:10px 0 4px">Effort not rated yet - worth a look:</div>'
+      +unrated.slice(0,5).map(t=>cardHtml(t)).join('');
+  }
+  bindCards(fh);
+  fh.querySelectorAll('[data-done]').forEach(el=>el.onclick=()=>openDoneSheet(el.dataset.done));
+  // must-dos that don't fit the current filter stay visible
+  const nf=must.filter(t=>!fits.includes(t));
+  const nh=$('#noFitMust');
+  if(fitTime||fitEffort){
+    nh.innerHTML=nf.length?'<div class="notice"><b>Must this week but doesn\'t fit that:</b> '+nf.map(t=>esc(t.title)).join(' · ')+'. It needs a deliberate slot, not a quieter list.</div>':'';
+  } else nh.innerHTML='';
+  renderWeek();
+}
+function renderWeek(){
+  const ws=weekStart(), host=$('#weekDays'); let html='';
+  for(let i=0;i<7;i++){
+    const ds=addDays(ws,i), d=new Date(ds+'T12:00:00');
+    const list=visibleTasks().filter(t=>t.day===ds).sort((a,b)=>a.order-b.order);
+    const tot=list.reduce((a,t)=>a+t.size,0);
+    const isToday=ds===todayStr();
+    html+='<div class="dayrow'+(isToday?' today':'')+'"><div class="dh">'
+      +'<div class="dname">'+d.toLocaleDateString(undefined,{weekday:'short'})+'<span class="dnum">'+d.toLocaleDateString(undefined,{day:'numeric',month:'short'})+'</span></div>'
+      +'<div><span class="daytotal">'+(tot?hoursText(tot):'')+'</span><button class="mini" data-add-day="'+ds+'">+ add</button></div></div>';
+    if(!list.length) html+='<div class="cap" style="padding:6px 2px">Nothing here yet.</div>';
+    for(const t of list) html+=cardHtml(t);
+    html+='</div>';
+  }
+  host.innerHTML=html;
+  bindCards(host);
+  host.querySelectorAll('[data-add-day]').forEach(el=>el.onclick=()=>openSheet(null,{day:el.dataset.addDay}));
+}
+
+/* ----- Tags ----- */
+function renderTags(){
+  const tags=allTags();
+  const untagged=visibleTasks().filter(t=>!(t.tags||[]).length).length;
+  const cloud=$('#tagCloud');
+  cloud.innerHTML=tags.map(([g,n])=>'<button class="chip'+(activeTag===g?' sel':'')+'" data-tag="'+esc(g)+'">#'+esc(g)+' <span style="opacity:.65">'+n+'</span></button>').join('')
+    +(untagged?'<button class="chip'+(activeTag===''?' sel':'')+'" data-tag="">untagged <span style="opacity:.65">'+untagged+'</span></button>':'');
+  if(!tags.length&&!untagged) cloud.innerHTML='<div class="cap">No tags yet. Add tags when you sort a task - "groceries", "home project", "job search", anything.</div>';
+  cloud.querySelectorAll('[data-tag]').forEach(b=>b.onclick=()=>{activeTag=(activeTag===b.dataset.tag||(b.dataset.tag===''&&activeTag===''))?null:b.dataset.tag;renderTags();});
+  const host=$('#tagView');
+  if(activeTag===null){host.innerHTML='';return;}
+  const list=visibleTasks().filter(t=>activeTag===''?!(t.tags||[]).length:(t.tags||[]).includes(activeTag))
+    .sort((a,b)=>a.order-b.order);
+  if(!list.length){host.innerHTML='<div class="cap" style="margin-top:10px">Nothing open under this tag.</div>';return;}
+  const isGroc=activeTag==='groceries'||activeTag==='grocery';
+  if(isGroc){
+    host.innerHTML='<h2 class="sec">#'+esc(activeTag)+' <span class="n">checklist</span></h2>'
+      +list.map(t=>'<div class="gitem" data-gdone="'+t.id+'"><span class="box"></span><span class="tt">'+esc(t.title)+'</span></div>').join('')
+      +'<div class="cap" style="margin-top:6px">Tap to cross off. Crossed-off items land in the Done log with today\'s date.</div>';
+    host.querySelectorAll('[data-gdone]').forEach(el=>el.onclick=async()=>{
+      const t=task(el.dataset.gdone); t.done=true; t.doneDate=todayStr(); await saveTask(t); renderAll();
+    });
+  } else {
+    host.innerHTML='<h2 class="sec">#'+esc(activeTag||'untagged')+' <span class="n">'+list.length+' open</span></h2>'
+      +list.map(t=>cardHtml(t,{controls:'<div class="ctl"><button data-done="'+t.id+'">✓ Done</button></div>'})).join('');
+    bindCards(host);
+    host.querySelectorAll('[data-done]').forEach(el=>el.onclick=()=>openDoneSheet(el.dataset.done));
+  }
+}
+/* ----- Done log ----- */
+function renderDone(){
+  const done=state.tasks.filter(t=>t.done).sort((a,b)=>((b.doneDate||'').localeCompare(a.doneDate||''))||b.order-a.order);
+  $('#doneCount').textContent=done.length?done.length+' recorded':'';
+  const tools=$('#doneTools');
+  const jobDone=done.filter(isJobTask);
+  tools.innerHTML=jobDone.length?'<button class="btn" id="eiCsvBtn">Download job-search log (CSV)</button>':'';
+  const csvB=$('#eiCsvBtn'); if(csvB) csvB.onclick=()=>exportJobCsv(done);
+  const host=$('#doneList');
+  if(!done.length){host.innerHTML='<div class="cap" style="padding:8px 2px">Nothing finished yet. Completed tasks land here with their date and outcome.</div>';return;}
+  let html='',lastGroup=null;
+  for(const t of done){
+    const g=t.doneDate?niceDate(t.doneDate):'Earlier - date not recorded';
+    if(g!==lastGroup){html+='<div class="dategroup">'+g+'</div>';lastGroup=g;}
+    html+='<div class="tcard done"><div class="tt">'+esc(t.title)+'</div>'
+      +'<div class="meta">'+((t.tags||[]).map(x=>'#'+esc(x)).join(' '))
+      +(t.outcome?'<div class="small" style="width:100%;color:var(--ink-2);margin-top:2px">'+esc(t.outcome)+'</div>':'')
+      +(t.ei?'<div class="tiny" style="width:100%;color:var(--accent);margin-top:2px">Logged in EI activity log ✓</div>':'')
+      +'</div></div>';
+  }
+  host.innerHTML=html;
+}
+function csvQuote(v){v=String(v??'');return '"'+v.replace(/"/g,'""')+'"';}
+function exportJobCsv(done){
+  const cols=['date','type','employer','contact','role','action','result','evidence'];
+  const rows=done.filter(isJobTask).map(t=>{
+    const ei=t.ei||{};
+    return {date:t.doneDate||'',type:ei.type||'',employer:'',contact:'',role:'',action:t.title,result:t.outcome||'',evidence:''};
+  });
+  const csv='﻿'+[cols.map(csvQuote).join(',')].concat(rows.map(r=>cols.map(c=>csvQuote(r[c])).join(','))).join('\r\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download='job-search-log-'+todayStr()+'.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+}
+/* ----- Streams ----- */
+function renderStreams(){
+  const host=$('#streamList'); let html='';
+  for(const s of state.streams){
+    const n=visibleTasks().filter(t=>t.streamId===s.id).length;
+    html+='<div class="small" style="display:flex;align-items:center;gap:8px;padding:4px 0"><span class="dot" style="background:'+s.color+'"></span>'+esc(s.name)+'<span class="cap">'+n+' open</span><button class="mini" data-rmstream="'+s.id+'">remove</button></div>';
+  }
+  if(!state.streams.length) html='<div class="cap">No streams yet - add one below.</div>';
+  host.innerHTML=html;
+  host.querySelectorAll('[data-rmstream]').forEach(el=>el.onclick=async()=>{
+    const sid=el.dataset.rmstream;
+    state.streams=state.streams.filter(s=>s.id!==sid); await idbDel('streams',sid);
+    for(const t of state.tasks) if(t.streamId===sid){t.streamId=null;await saveTask(t);}
+    renderAll();
+  });
+}
+
+/* ============ task sheet (detail / capture) ============ */
+let sheetTask=null;
+function openSheet(id,preset){
+  preset=preset||{};
+  sheetTask=id?task(id):null;
+  const sh=$('#sheet'); const isNew=!sheetTask;
+  const t=sheetTask||migrate(Object.assign({id:'',title:'',streamId:null,kind:'task',size:60,
+    col:(preset.day?'now':'inbox'),order:Date.now(),notBefore:null,notes:'',day:preset.day||null,
+    done:false,photos:[],course:null,chore:null,created:todayStr()},{}));
+  const draft=JSON.parse(JSON.stringify(t));
+  let html='<button class="x" id="sheetX">✕</button>';
+  html+='<h2>'+(isNew?'Capture':'Task')+'</h2>';
+  html+='<label class="f">Title</label><input type="text" id="fTitle" value="'+esc(t.title)+'" placeholder="Name it by the outcome, e.g. Sort the boxes and clear the workspace">';
+  html+='<label class="f">Tags <span class="cap" style="display:inline">- how you will look it up later</span></label><div id="fTags"></div>'
+      +'<div style="display:flex;gap:6px;margin-top:4px"><input type="text" id="fNewTag" placeholder="new tag" style="flex:1"><button class="btn soft" id="fAddTag">Add</button></div>';
+  html+='<label class="f">Stream (optional colour)</label><div id="fStreams">'
+      +'<button class="chip'+(!t.streamId?' sel':'')+'" data-fs="">None</button>'
+      +state.streams.map(s=>'<button class="chip'+(t.streamId===s.id?' sel':'')+'" data-fs="'+s.id+'"><span class="dot" style="background:'+s.color+'"></span>'+esc(s.name)+'</button>').join('')+'</div>';
+  html+='<label class="f">Rough size</label><div id="fSizes">'
+      +SIZES.map(([m,l])=>'<button class="chip'+(t.size===m?' sel':'')+'" data-fsize="'+m+'">'+l+'</button>').join('')+'</div>';
+  html+='<label class="f">Mental effort</label><div id="fEfforts">'
+      +'<button class="chip'+(!t.effort?' sel':'')+'" data-fe="">Not rated</button>'
+      +EFFORTS.map(([k,l])=>'<button class="chip'+(t.effort===k?' sel':'')+'" data-fe="'+k+'">'+l+'</button>').join('')+'</div>';
+  html+='<label class="f">Priority - where it sits</label><div id="fCols">'
+      +COLS.map(([cid,n])=>'<button class="chip'+(t.col===cid?' sel':'')+'" data-fcol="'+cid+'">'+n+'</button>').join('')+'</div>';
+  html+='<label class="f">Urgency</label><div id="fMust"><button class="chip'+(t.mustWeek?' sel':'')+'" data-fmust="1">Must do this week</button><button class="chip'+(!t.mustWeek?' sel':'')+'" data-fmust="">No fixed week</button></div>'
+      +'<div class="cap" style="margin-top:4px">"Must" keeps it on the Now screen even before you pick a day.</div>';
+  html+='<label class="f">Due date (optional - the hard deadline, not the day you plan to do it)</label><input type="date" id="fDue" value="'+(t.dueDate||'')+'">';
+  html+='<label class="f">Planned day (optional - your rough plan; changing it never moves the due date)</label><div id="fDays">'
+      +'<button class="chip'+(!t.day?' sel':'')+'" data-fday="">No day</button>'
+      +(function(){let h='';const ws=weekStart();for(let i=0;i<7;i++){const ds=addDays(ws,i);h+='<button class="chip'+(t.day===ds?' sel':'')+'" data-fday="'+ds+'">'+niceDate(ds)+'</button>';}return h;})()+'</div>';
+  html+='<label class="f">Not before (optional - parks it until that date)</label><input type="date" id="fNotBefore" value="'+(t.notBefore||'')+'">';
+  html+='<label class="f">Type</label><div id="fKinds">'
+      +[['task','One-off'],['chore','Recurring chore'],['course','Finite course / project']].map(([k,n])=>'<button class="chip'+(t.kind===k?' sel':'')+'" data-fkind="'+k+'">'+n+'</button>').join('')+'</div>';
+  html+='<div id="fKindExtra"></div>';
+  html+='<label class="f">Notes</label><textarea id="fNotes" placeholder="Anything to remember">'+esc(t.notes)+'</textarea>';
+  html+='<label class="f">Photos</label><div class="photos" id="fPhotos"></div>'
+      +'<button class="btn" id="fAddPhoto">📷 Add photo</button><input type="file" id="fPhotoFile" accept="image/*" class="hidden">';
+  html+='<div style="margin-top:16px">'
+      +'<button class="btn primary" id="fSave">'+(isNew?'Add':'Save')+'</button>'
+      +(isNew?'':'<button class="btn soft" id="fDone">Mark done</button><button class="btn warn" id="fDelete">Delete</button>')
+      +'</div>';
+  sh.innerHTML=html;
+  $('#sheetBack').classList.add('on'); sh.classList.add('on');
+  $('#sheetX').onclick=closeSheet; $('#sheetBack').onclick=closeSheet;
+  function renderTagChips(){
+    const known=[...new Set([].concat(...state.tasks.map(x=>x.tags||[])))];
+    const extra=known.filter(g=>!draft.tags.includes(g)).slice(0,8);
+    $('#fTags').innerHTML=draft.tags.map(g=>'<button class="chip sel" data-rtag="'+esc(g)+'">#'+esc(g)+' ✕</button>').join('')
+      +extra.map(g=>'<button class="chip" data-atag="'+esc(g)+'">#'+esc(g)+'</button>').join('');
+    $('#fTags').querySelectorAll('[data-rtag]').forEach(b=>b.onclick=()=>{draft.tags=draft.tags.filter(x=>x!==b.dataset.rtag);renderTagChips();});
+    $('#fTags').querySelectorAll('[data-atag]').forEach(b=>b.onclick=()=>{draft.tags.push(b.dataset.atag);renderTagChips();});
+  }
+  renderTagChips();
+  $('#fAddTag').onclick=()=>{
+    const v=$('#fNewTag').value.trim().toLowerCase().replace(/^#+/,'').replace(/\s+/g,'-');
+    if(v&&!draft.tags.includes(v)){draft.tags.push(v);renderTagChips();}
+    $('#fNewTag').value='';
+  };
+  sh.querySelectorAll('[data-fs]').forEach(b=>b.onclick=()=>{draft.streamId=b.dataset.fs||null;syncChips('fStreams',b);});
+  sh.querySelectorAll('[data-fsize]').forEach(b=>b.onclick=()=>{draft.size=+b.dataset.fsize;syncChips('fSizes',b);});
+  sh.querySelectorAll('[data-fe]').forEach(b=>b.onclick=()=>{draft.effort=b.dataset.fe||null;syncChips('fEfforts',b);});
+  sh.querySelectorAll('[data-fcol]').forEach(b=>b.onclick=()=>{draft.col=b.dataset.fcol;syncChips('fCols',b);});
+  sh.querySelectorAll('[data-fmust]').forEach(b=>b.onclick=()=>{draft.mustWeek=!!b.dataset.fmust;syncChips('fMust',b);});
+  sh.querySelectorAll('[data-fday]').forEach(b=>b.onclick=()=>{draft.day=b.dataset.fday||null;syncChips('fDays',b);});
+  sh.querySelectorAll('[data-fkind]').forEach(b=>b.onclick=()=>{draft.kind=b.dataset.fkind;
+    if(draft.kind==='chore'&&!draft.chore)draft.chore={everyN:1,unit:'weeks',lastDone:null};
+    if(draft.kind==='course'&&!draft.course)draft.course={totalText:'',totalMin:0,loggedMin:0};
+    syncChips('fKinds',b); renderKindExtra(draft);});
+  renderKindExtra(draft);
+  renderSheetPhotos(draft);
+  $('#fAddPhoto').onclick=()=>$('#fPhotoFile').click();
+  $('#fPhotoFile').onchange=async ev=>{
+    const f=ev.target.files[0]; if(!f)return;
+    const pid=await addPhoto(f, sheetTask?sheetTask.id:null);
+    draft.photos.push(pid); if(sheetTask)sheetTask.photos.push(pid);
+    renderSheetPhotos(draft);
+  };
+  $('#fSave').onclick=async()=>{
+    draft.title=$('#fTitle').value.trim();
+    if(!draft.title){ if(draft.photos.length) draft.title='Photo note'; else {$('#fTitle').focus();return;} }
+    draft.notBefore=$('#fNotBefore').value||null; draft.notes=$('#fNotes').value;
+    draft.dueDate=$('#fDue').value||null;
+    collectKindExtra(draft);
+    if(isNew){ delete draft.id; await newTask(draft); } else { Object.assign(sheetTask,draft); await saveTask(sheetTask); }
+    closeSheet(); renderAll();
+  };
+  if(!isNew){
+    $('#fDone').onclick=()=>{ closeSheet(); openDoneSheet(sheetTask.id); };
+    $('#fDelete').onclick=async()=>{ await removeTask(sheetTask.id); closeSheet(); renderAll(); };
+  }
+}
+function syncChips(hostId,btn){document.getElementById(hostId).querySelectorAll('.chip').forEach(c=>c.classList.remove('sel'));btn.classList.add('sel');}
+function renderKindExtra(draft){
+  const host=$('#fKindExtra');
+  if(draft.kind==='chore'){
+    host.innerHTML='<label class="f">Repeats every</label><div style="display:flex;gap:6px;align-items:center">'
+      +'<input type="text" inputmode="numeric" id="fEveryN" value="'+(draft.chore?draft.chore.everyN:1)+'" style="width:64px">'
+      +'<select id="fEveryUnit" style="width:auto">'
+      +['days','weeks','months'].map(u=>'<option'+(draft.chore&&draft.chore.unit===u?' selected':'')+'>'+u+'</option>').join('')+'</select></div>'
+      +'<div class="cap" style="margin-top:6px">Marking it done schedules the next one automatically. It never ends - that is what a chore is.</div>';
+  } else if(draft.kind==='course'){
+    const c=draft.course||{totalText:'',totalMin:0,loggedMin:0};
+    host.innerHTML='<label class="f">Your estimate, exactly as you said it</label>'
+      +'<input type="text" id="fTotalText" placeholder="e.g. 10-12 hours" value="'+esc(c.totalText)+'">'
+      +'<label class="f">Working total for tracking</label>'
+      +'<div style="display:flex;gap:6px;align-items:center"><input type="text" inputmode="decimal" id="fTotalH" value="'+(c.totalMin?(c.totalMin/60):'')+'" style="width:80px"><span class="small muted">hours</span></div>'
+      +'<div class="cap" style="margin-top:6px">A single number, used only to count down. It ends when the hours are done - it never becomes a habit. Logged so far: '+hoursText(c.loggedMin)+'.</div>'
+      +(c.totalMin?'<div style="margin-top:6px"><button class="btn soft" id="fLog">Log a session</button></div>':'');
+    const lg=host.querySelector('#fLog');
+    if(lg) lg.onclick=()=>{
+      const left=courseLeft({course:{totalMin:+(host.querySelector('#fTotalH').value||0)*60,loggedMin:draft.course.loggedMin}});
+      const mins=Math.min(draft.size,Math.max(15,left));
+      draft.course.loggedMin+=mins;
+      if(sheetTask&&sheetTask.course){sheetTask.course.loggedMin=draft.course.loggedMin;saveTask(sheetTask);}
+      renderKindExtra(draft); renderAll();
+    };
+  } else host.innerHTML='';
+}
+function collectKindExtra(draft){
+  if(draft.kind==='chore'){draft.chore.everyN=Math.max(1,parseInt($('#fEveryN').value)||1);draft.chore.unit=$('#fEveryUnit').value;}
+  if(draft.kind==='course'){draft.course.totalText=$('#fTotalText').value.trim();draft.course.totalMin=Math.round((parseFloat($('#fTotalH').value)||0)*60);}
+}
+function closeSheet(){$('#sheetBack').classList.remove('on');$('#sheet').classList.remove('on');sheetTask=null;}
+
+/* ============ completion: date + outcome (+ EI log for job search) ============ */
+function openDoneSheet(id){
+  const t=task(id); if(!t)return;
+  const sh=$('#sheet');
+  const job=isJobTask(t);
+  let html='<button class="x" id="sheetX">✕</button><h2>Done: '+esc(t.title)+'</h2>';
+  html+='<label class="f">When did you finish it?</label><input type="date" id="dDate" value="'+todayStr()+'">';
+  html+='<label class="f">Outcome (optional - what happened, so you never have to remember)</label><input type="text" id="dOutcome" placeholder="e.g. Submitted, they confirm by email / Called, left a message">';
+  if(job){
+    html+='<label class="f" style="margin-top:14px"><input type="checkbox" id="dEi" checked style="width:auto;margin-right:6px">Log it in the EI activity log (Job tracker)</label>';
+    html+='<div id="dEiExtra"><label class="f">Activity type</label><select id="dEiType">'
+      +EI_TYPES.map(x=>'<option>'+x+'</option>').join('')+'</select>'
+      +'<div class="cap" style="margin-top:6px">Writes one entry into the Job tracker\'s EI activity log when both apps share this browser\'s storage (for example, both open in the same Safari). Home-screen icons may keep separate storage, so check the Job tracker afterwards - the entry is always recorded here too, with its date and outcome.</div></div>';
+  }
+  html+='<div style="margin-top:16px"><button class="btn primary" id="dSave">Mark done</button><button class="btn" id="dCancel">Not yet</button></div>';
+  sh.innerHTML=html; $('#sheetBack').classList.add('on'); sh.classList.add('on');
+  $('#sheetX').onclick=closeSheet; $('#sheetBack').onclick=closeSheet; $('#dCancel').onclick=closeSheet;
+  if(job) $('#dEi').onchange=()=>$('#dEiExtra').classList.toggle('hidden',!$('#dEi').checked);
+  $('#dSave').onclick=async()=>{
+    t.doneDate=$('#dDate').value||todayStr();
+    t.outcome=$('#dOutcome').value.trim();
+    const wantEi=job&&$('#dEi').checked;
+    if(wantEi){
+      const rec=writeEiRecord(t,$('#dEiType').value);
+      t.ei=rec?{id:rec.id,type:rec.type}:null;
+    }
+    await completeTask(t);
+    closeSheet(); renderAll();
+    if(wantEi&&!t.ei) alert('The EI log could not be written in this browser. The task is still recorded here with its date and outcome.');
+  };
+}
+function writeEiRecord(t,type){
+  try{
+    const raw=localStorage.getItem(EI_LS_KEY);
+    const arr=raw?JSON.parse(raw):[];
+    if(!Array.isArray(arr)) throw new Error('bad log');
+    const rec={id:'tw-'+uid().slice(1),date:t.doneDate||todayStr(),type:type||EI_TYPES[0],
+      posting:'',employer:'',contact:'',role:'',action:t.title,result:t.outcome||'',evidence:''};
+    arr.push(rec);
+    localStorage.setItem(EI_LS_KEY,JSON.stringify(arr));
+    return rec;
+  }catch(e){ return null; }
+}
+async function completeTask(t){
+  if(t.kind==='chore'&&t.chore){
+    const step=t.chore.unit==='days'?t.chore.everyN:t.chore.unit==='weeks'?t.chore.everyN*7:t.chore.everyN*30;
+    const next=Object.assign({},t,{id:uid(),done:false,doneDate:null,outcome:'',ei:null,
+      notBefore:addDays(todayStr(),step),day:null,order:Date.now(),created:todayStr(),
+      chore:Object.assign({},t.chore,{lastDone:t.doneDate||todayStr()})});
+    t.done=true;
+    await saveTask(t);
+    state.tasks.push(next); await saveTask(next);
+  } else if(t.kind==='course'&&t.course){
+    t.course.loggedMin=Math.min(t.course.loggedMin+t.size,t.course.totalMin);
+    t.done=true;
+    await saveTask(t);
+  } else { t.done=true; await saveTask(t); }
+}
+
+/* ============ photos ============ */
+async function addPhoto(file,taskId){
+  const blob=await downscale(file,1200);
+  const pid='p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  await idbPut('photos',{id:pid,taskId:taskId||'',blob});
+  state.photos.set(pid,URL.createObjectURL(blob));
+  return pid;
+}
+function downscale(file,maxSide){return new Promise(res=>{
+  const img=new Image(); const url=URL.createObjectURL(file);
+  img.onload=()=>{
+    const sc=Math.min(1,maxSide/Math.max(img.width,img.height));
+    if(sc>=1&&file.size<400*1024){URL.revokeObjectURL(url);return res(file);}
+    const c=document.createElement('canvas');
+    c.width=Math.round(img.width*sc); c.height=Math.round(img.height*sc);
+    c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+    URL.revokeObjectURL(url);
+    c.toBlob(b=>res(b||file),'image/jpeg',0.82);
+  };
+  img.onerror=()=>{URL.revokeObjectURL(url);res(file);};
+  img.src=url;
+});}
+function renderSheetPhotos(draft){
+  const host=$('#fPhotos'); if(!host)return;
+  host.innerHTML=(draft.photos||[]).map(pid=>{
+    const u=state.photos.get(pid); return u?'<img src="'+u+'" data-ph="'+pid+'">':'';
+  }).join('');
+  host.querySelectorAll('img').forEach(im=>im.onclick=()=>window.open(im.src,'_blank'));
+}
+async function loadPhotoURLs(){
+  const all=await idbAll('photos');
+  for(const p of all) if(p.blob) state.photos.set(p.id,URL.createObjectURL(p.blob));
+}
+
+/* ============ day picker ============ */
+function openDayPicker(id){
+  const ws=weekStart(); const sh=$('#sheet');
+  let html='<button class="x" id="sheetX">✕</button><h2>Put it on a day</h2>';
+  html+='<div class="cap">A rough plan - the due date, if it has one, does not move.</div><div style="margin-top:10px">';
+  for(let i=0;i<7;i++){const ds=addDays(ws,i);
+    html+='<button class="btn" data-pick="'+ds+'">'+niceDate(ds)+'</button>';
+  }
+  html+='</div>';
+  sh.innerHTML=html; $('#sheetBack').classList.add('on'); sh.classList.add('on');
+  $('#sheetX').onclick=closeSheet; $('#sheetBack').onclick=closeSheet;
+  sh.querySelectorAll('[data-pick]').forEach(b=>b.onclick=async()=>{
+    const t=task(id); t.day=b.dataset.pick; await saveTask(t); closeSheet(); renderAll(); switchView('view-now');
+    $('#weekCard').classList.remove('collapsed');
+  });
+}
+
+/* ============ export / import (v2 format; reads v1 backups too) ============ */
+function blobToDataURL(blob){return new Promise(res=>{const r=new FileReader();r.onload=()=>res(r.result);r.readAsDataURL(blob);});}
+async function dataURLtoBlob(du){const r=await fetch(du);return r.blob();}
+async function exportBackup(){
+  const photos=await idbAll('photos');
+  const packed=[];
+  for(const p of photos) packed.push({id:p.id,taskId:p.taskId,dataUrl:await blobToDataURL(p.blob)});
+  const data={version:2,exportedAt:new Date().toISOString(),
+    tasks:state.tasks.map(t=>({...t})),streams:state.streams.map(s=>({...s})),photos:packed};
+  const blob=new Blob([JSON.stringify(data,null,1)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='this-week-backup-'+todayStr()+'.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+}
+async function importData(data){
+  if(!data||!Array.isArray(data.tasks)) throw new Error('not a backup file');
+  for(const s of (data.streams||[])) await idbPut('streams',s);
+  for(const t of data.tasks) await idbPut('tasks',migrate(t)); // v1 rows gain the new fields here
+  for(const p of (data.photos||[])){
+    const blob=await dataURLtoBlob(p.dataUrl);
+    await idbPut('photos',{id:p.id,taskId:p.taskId||'',blob});
+  }
+  await loadAll(); renderAll();
+}
+
+/* ============ capture: quick text, photo, pasted list ============ */
+async function quickCapture(title){
+  title=(title||'').trim(); if(!title)return;
+  const tags=[]; let clean=title;
+  const m=title.match(/#[\w-]+/g);
+  if(m){ for(const g of m) tags.push(g.slice(1).toLowerCase()); clean=title.replace(/#[\w-]+/g,'').replace(/\s{2,}/g,' ').trim(); }
+  await newTask({title:clean,tags});
+  renderAll();
+}
+$('#quickAddBtn').onclick=async()=>{
+  const v=$('#quickTitle').value; $('#quickTitle').value=''; await quickCapture(v);
+};
+$('#quickTitle').addEventListener('keydown',async ev=>{
+  if(ev.key==='Enter'){const v=ev.target.value;ev.target.value='';await quickCapture(v);}
+});
+$('#quickPhotoBtn').onclick=()=>$('#quickPhotoFile').click();
+$('#quickPhotoFile').onchange=async ev=>{
+  const f=ev.target.files[0]; ev.target.value=''; if(!f)return;
+  const t=await newTask({title:'Photo note'});
+  const pid=await addPhoto(f,t.id);
+  t.photos.push(pid); await saveTask(t);
+  renderAll(); openSheet(t.id); // name it while it is fresh
+};
+$('#pasteListBtn').onclick=()=>$('#pasteArea').classList.toggle('hidden');
+$('#pasteMakeBtn').onclick=async()=>{
+  const lines=$('#pasteText').value.split('\n').map(l=>l.replace(/^[-*•\d.)\s]+/,'').trim()).filter(Boolean);
+  if(!lines.length)return;
+  for(const l of lines) await quickCapture(l);
+  $('#pasteText').value=''; $('#pasteArea').classList.add('hidden');
+  alert(lines.length+' task'+(lines.length===1?'':'s')+' added to the inbox. Check each one - anything misread is yours to fix.');
+};
+
+/* ============ tabs, samples, wipe, init ============ */
+function switchView(id){
+  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.id===id));
+  document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.v===id));
+  window.scrollTo(0,0);
+}
+document.querySelectorAll('nav.tabs button').forEach(b=>b.onclick=()=>switchView(b.dataset.v));
+$('#weekToggle').onclick=()=>$('#weekCard').classList.toggle('collapsed');
+$('#addStreamBtn').onclick=async()=>{
+  const name=$('#newStreamName').value.trim(); if(!name)return;
+  const s={id:uid(),name,color:STREAM_COLORS[state.streams.length%STREAM_COLORS.length]};
+  state.streams.push(s); await idbPut('streams',s); $('#newStreamName').value=''; renderAll();
+};
+$('#exportBtn').onclick=exportBackup;
+$('#importBtn').onclick=()=>$('#importFile').click();
+$('#importFile').onchange=async ev=>{
+  const f=ev.target.files[0]; if(!f)return;
+  try{ await importData(JSON.parse(await f.text())); alert('Backup restored.'); }
+  catch(e){ alert('That file does not look like a backup.'); }
+};
+$('#importTextBtn').onclick=async()=>{
+  try{ await importData(JSON.parse($('#importText').value)); $('#importText').value=''; alert('Backup restored.'); }
+  catch(e){ alert('That text does not look like a backup.'); }
+};
+$('#sampleBtn').onclick=async()=>{
+  await newTask({title:'Example: tidy the desk',kind:'task',size:15,col:'now',effort:'low',tags:['home-project']});
+  await newTask({title:'Example: milk and coffee',kind:'task',size:15,col:'next',effort:'low',tags:['groceries']});
+  await newTask({title:'Example: renew passport',kind:'task',size:60,col:'next',effort:'med',mustWeek:true,tags:['life-admin'],dueDate:addDays(todayStr(),10)});
+  await newTask({title:'Example: read chapter 3',kind:'course',size:60,col:'now',effort:'high',course:{totalText:'about 5 hours',totalMin:300,loggedMin:0}});
+  renderAll(); switchView('view-now');
+};
+$('#wipeBtn').onclick=async()=>{
+  if(!confirm('Erase every task, stream and photo on this device?'))return;
+  for(const t of [...state.tasks]) await idbDel('tasks',t.id);
+  for(const s of [...state.streams]) await idbDel('streams',s.id);
+  for(const p of (await idbAll('photos'))) await idbDel('photos',p.id);
+  state={tasks:[],streams:[],photos:new Map()}; renderAll();
+};
+async function loadAll(){
+  state.tasks=(await idbAll('tasks')).map(migrate);
+  state.streams=await idbAll('streams');
+  await loadPhotoURLs();
+}
+(async function init(){
+  db=await openDB();
+  renderPersistNotice();
+  await loadAll();
+  renderAll();
+})();
+</script>
+</body>
+</html>
