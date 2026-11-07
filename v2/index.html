@@ -114,6 +114,7 @@ h2.sec .n{font-family:var(--font-t);font-size:12px;color:var(--ink-3);font-weigh
 </header>
 
 <main class="wrap">
+  <div id="statusLine" class="notice hidden" style="margin:0 0 8px"></div>
   <section id="view-inbox" class="view on">
     <div id="persistNotice"></div>
     <div class="card capturebox">
@@ -263,6 +264,13 @@ function idbAll(store){return new Promise((res,rej)=>{
   if(memFallback){return res([...mem[store].values()]);}
   const r=tx(store,'readonly').getAll(); r.onsuccess=()=>res(r.result||[]); r.onerror=()=>rej(r.error);
 });}
+/* one transaction = all-or-nothing: a crash mid-write cannot leave a partial batch */
+function idbBulk(stores,fn){return new Promise((res,rej)=>{
+  if(memFallback){ fn({put:(s,v)=>mem[s].set(s==='meta'?v.k:v.id,v), del:(s,k)=>mem[s].delete(k)}); return res(); }
+  const t=db.transaction(stores,'readwrite');
+  fn({put:(s,v)=>t.objectStore(s).put(v), del:(s,k)=>t.objectStore(s).delete(k)});
+  t.oncomplete=()=>res(); t.onerror=()=>rej(t.error); t.onabort=()=>rej(t.error);
+});}
 
 /* ============ model ============ */
 const SIZES=[[15,'15m'],[30,'30m'],[60,'1h'],[120,'2h'],[240,'half day'],[480,'full day']];
@@ -271,6 +279,7 @@ const EFFORTS=[['low','Mindless'],['med','Some thought'],['high','Deep focus']];
 const STREAM_COLORS=['#5b7f63','#7a6a9e','#b0764a','#4a7a9e','#a3534f','#8a8548'];
 const EI_TYPES=['Reviewing opportunities','CV / cover letter preparation','Job tools / agency registration','Workshop / job fair','Networking','Contacting employer','Application submitted','Interview','Skills evaluation'];
 const EI_LS_KEY='jobTrackerActivitiesV1'; // the Job tracker app's EI log (same browser storage, same site)
+const EI_REGISTRY_KEY='twEiWritesV1'; // taskId -> EI entry, kept in localStorage so restoring an older backup cannot erase the record of what was already logged
 const uid=()=> 't'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 const todayStr=()=>isoDate(new Date());
 function isoDate(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
@@ -287,6 +296,7 @@ function isParked(t){return t.notBefore && t.notBefore>todayStr();}
 function visibleTasks(){return state.tasks.filter(t=>!t.done);}
 function courseLeft(t){return Math.max(0,(t.course? (t.course.totalMin-t.course.loggedMin):0));}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function flash(msg){const el=$('#statusLine');el.textContent=msg;el.classList.remove('hidden');clearTimeout(flash._t);flash._t=setTimeout(()=>el.classList.add('hidden'),8000);window.scrollTo(0,0);}
 function isJobTask(t){return (t.tags||[]).some(g=>g.indexOf('job')!==-1);}
 function allTags(){
   const m=new Map();
@@ -710,12 +720,44 @@ function openDoneSheet(id){
     t.doneDate=$('#dDate').value||todayStr();
     t.outcome=$('#dOutcome').value.trim();
     if(wantEi){
-      const rec=writeEiRecord(t,$('#dEiType').value);
+      const type=$('#dEiType').value;
+      const existing=findEiExisting(t,type);
+      if(existing&&existing.certain){
+        // restore-replay guard: this task already has an EI entry - link it, never write a second
+        t.ei={id:existing.rec.id,type:existing.rec.type||type};
+        rememberEiWrite(t.id,{id:t.ei.id,date:existing.rec.date||t.doneDate,type:t.ei.type});
+        await completeTask(t);
+        closeSheet(); renderAll();
+        flash('Already in the EI log ('+t.ei.type+') - linked to that entry, not written twice.');
+        return;
+      }
+      if(existing&&!existing.certain){
+        // a lookalike entry exists (same title, type, date) - explicit reconciliation, never a silent skip or write
+        $('#dEiWarn').textContent='';
+        const box=document.createElement('div');
+        box.className='notice';
+        box.innerHTML='<b>A matching entry already exists</b> in the EI log ('+(existing.rec.date?niceDate(existing.rec.date):'date not recorded')+' · '+esc(existing.rec.type||'')+' · '+esc(existing.rec.action||'')+'). Only write another if this really is a separate activity.'
+          +'<div style="margin-top:8px"><button class="btn warn" id="dEiDupWrite">Write another entry</button> <button class="btn" id="dEiDupKeep">Keep the existing one</button></div>';
+        $('#dEiExtra').appendChild(box);
+        $('#dEiDupKeep').onclick=async()=>{
+          t.ei={id:existing.rec.id,type:existing.rec.type||type};
+          rememberEiWrite(t.id,{id:t.ei.id,date:existing.rec.date||t.doneDate,type:t.ei.type});
+          await completeTask(t); closeSheet(); renderAll();
+        };
+        $('#dEiDupWrite').onclick=async()=>{
+          const rec=writeEiRecord(t,type);
+          t.ei=rec?{id:rec.id,type:rec.type}:null;
+          await completeTask(t); closeSheet(); renderAll();
+          if(!t.ei) flash('The EI log could not be written in this browser. The task is still recorded here with its date and outcome.');
+        };
+        return; // sheet stays open until he chooses
+      }
+      const rec=writeEiRecord(t,type);
       t.ei=rec?{id:rec.id,type:rec.type}:null;
     }
     await completeTask(t);
     closeSheet(); renderAll();
-    if(wantEi&&!t.ei) alert('The EI log could not be written in this browser. The task is still recorded here with its date and outcome.');
+    if(wantEi&&!t.ei) flash('The EI log could not be written in this browser. The task is still recorded here with its date and outcome.');
   };
 }
 function writeEiRecord(t,type){
@@ -725,11 +767,29 @@ function writeEiRecord(t,type){
     const arr=raw?JSON.parse(raw):[];
     if(!Array.isArray(arr)) throw new Error('bad log');
     const rec={id:'tw-'+uid().slice(1),date:t.doneDate||todayStr(),type:type,
-      posting:'',employer:'',contact:'',role:'',action:t.title,result:t.outcome||'',evidence:''};
+      posting:'',employer:'',contact:'',role:'',action:t.title,result:t.outcome||'',evidence:'',twTaskId:t.id};
     arr.push(rec);
     localStorage.setItem(EI_LS_KEY,JSON.stringify(arr));
+    rememberEiWrite(t.id,rec);
     return rec;
   }catch(e){ return null; }
+}
+function eiRegistry(){ try{ const r=JSON.parse(localStorage.getItem(EI_REGISTRY_KEY)); return r&&typeof r==='object'?r:{}; }catch(e){ return {}; } }
+function rememberEiWrite(taskId,rec){ try{ const r=eiRegistry(); r[taskId]={id:rec.id,date:rec.date,type:rec.type}; localStorage.setItem(EI_REGISTRY_KEY,JSON.stringify(r)); }catch(e){} }
+function findEiExisting(t,type){
+  // stable identity first: the task id stamped on the entry, then the write registry (survives an older-backup restore);
+  // last, a lookalike (same title+type+date) which needs James's explicit decision, never a silent skip or write
+  try{
+    const raw=localStorage.getItem(EI_LS_KEY); const arr=raw?JSON.parse(raw):[];
+    if(!Array.isArray(arr)) return null;
+    const byTask=arr.find(r=>r&&r.twTaskId===t.id);
+    if(byTask) return {rec:byTask,certain:true};
+    const reg=eiRegistry()[t.id];
+    if(reg) return {rec:{id:reg.id,date:reg.date,type:reg.type},certain:true};
+    const twin=arr.find(r=>r&&String(r.id||'').indexOf('tw-')===0&&r.action===t.title&&r.type===type&&r.date===(t.doneDate||todayStr()));
+    if(twin) return {rec:twin,certain:false};
+  }catch(e){}
+  return null;
 }
 async function completeTask(t){
   if(t.kind==='chore'&&t.chore){
@@ -816,19 +876,22 @@ async function exportBackup(){
 }
 async function importData(data,opts){
   if(!data||!Array.isArray(data.tasks)) throw new Error('not a backup file');
-  if(opts&&opts.replace){ // remove anything on this device that the backup does not contain
-    const keepT=new Set(data.tasks.map(t=>t.id));
-    const keepP=new Set((data.photos||[]).map(p=>p.id));
-    for(const t of state.tasks) if(!keepT.has(t.id)) await idbDel('tasks',t.id);
-    const existing=await idbAll('photos');
-    for(const p of existing) if(!keepP.has(p.id)) await idbDel('photos',p.id);
-  }
-  for(const s of (data.streams||[])) await idbPut('streams',s);
-  for(const t of data.tasks) await idbPut('tasks',migrate(t)); // v1 rows gain the new fields here
-  for(const p of (data.photos||[])){
-    const blob=await dataURLtoBlob(p.dataUrl);
-    await idbPut('photos',{id:p.id,taskId:p.taskId||'',blob});
-  }
+  // convert photo payloads before opening the transaction; the write itself is one all-or-nothing transaction
+  const photos=[];
+  for(const p of (data.photos||[])) photos.push({id:p.id,taskId:p.taskId||'',blob:await dataURLtoBlob(p.dataUrl)});
+  const streams=(data.streams||[]).map(s=>({...s}));
+  const tasks=data.tasks.map(t=>migrate({...t})); // v1 rows gain the new fields here
+  await idbBulk(['tasks','streams','photos'],io=>{
+    if(opts&&opts.replace){ // remove anything on this device that the backup does not contain
+      const keepT=new Set(tasks.map(t=>t.id));
+      const keepP=new Set(photos.map(p=>p.id));
+      for(const t of state.tasks) if(!keepT.has(t.id)) io.del('tasks',t.id);
+      for(const pid of state.photos.keys()) if(!keepP.has(pid)) io.del('photos',pid);
+    }
+    for(const s of streams) io.put('streams',s);
+    for(const t of tasks) io.put('tasks',JSON.parse(JSON.stringify(t)));
+    for(const p of photos) io.put('photos',p);
+  });
   await loadAll(); renderAll();
 }
 function openRestoreSheet(data){
@@ -845,18 +908,44 @@ function openRestoreSheet(data){
     +'<button class="btn" id="rCancel">Cancel - change nothing</button></div>';
   sh.innerHTML=html; $('#sheetBack').classList.add('on'); sh.classList.add('on');
   $('#sheetX').onclick=closeSheet; $('#sheetBack').onclick=closeSheet; $('#rCancel').onclick=closeSheet;
-  $('#rMerge').onclick=async ev=>{ ev.currentTarget.disabled=true; await importData(data); closeSheet(); alert('Backup merged in.'); };
-  $('#rReplace').onclick=async ev=>{ ev.currentTarget.disabled=true; await importData(data,{replace:true}); closeSheet(); alert('This device now matches the backup.'); };
+  $('#rMerge').onclick=async ev=>{ ev.currentTarget.disabled=true;
+    try{ await importData(data); closeSheet(); flash('Backup merged in.'); }
+    catch(e){ ev.currentTarget.disabled=false; flash('The restore failed before anything was written - nothing changed. Try again.'); }
+  };
+  $('#rReplace').onclick=async ev=>{ ev.currentTarget.disabled=true;
+    try{ await importData(data,{replace:true}); closeSheet(); flash('This device now matches the backup.'); }
+    catch(e){ ev.currentTarget.disabled=false; flash('The restore failed before anything was written - nothing changed. Try again.'); }
+  };
 }
 
 /* ============ capture: quick text, photo, pasted list ============ */
-async function quickCapture(title){
-  title=(title||'').trim(); if(!title)return;
+function parseTaskLine(title){
   const tags=[]; let clean=title;
   const m=title.match(/#[\w-]+/g);
   if(m){ for(const g of m) tags.push(g.slice(1).toLowerCase()); clean=title.replace(/#[\w-]+/g,'').replace(/\s{2,}/g,' ').trim(); }
-  await newTask({title:clean,tags});
+  return {clean,tags};
+}
+async function quickCapture(title){
+  title=(title||'').trim(); if(!title)return;
+  const p=parseTaskLine(title); if(!p.clean)return;
+  await newTask({title:p.clean,tags:p.tags});
   renderAll();
+}
+/* batch capture: every line built first, then ONE all-or-nothing transaction -
+   a crash or failure writes nothing, so re-running after a failure can never duplicate */
+async function quickCaptureMany(lines){
+  const items=[];
+  for(const raw of lines){
+    const l=(raw||'').trim(); if(!l) continue;
+    const p=parseTaskLine(l); if(!p.clean) continue;
+    items.push(migrate(Object.assign({id:uid(),title:p.clean,streamId:null,kind:'task',size:60,col:'inbox',order:Date.now()+items.length,
+      notBefore:null,notes:'',day:null,done:false,photos:[],course:null,chore:null,created:todayStr()},{tags:p.tags})));
+  }
+  if(!items.length) return 0;
+  await idbBulk(['tasks'],io=>{for(const t of items) io.put('tasks',JSON.parse(JSON.stringify(t)));});
+  for(const t of items) state.tasks.push(t);
+  renderAll();
+  return items.length;
 }
 $('#quickAddBtn').onclick=async()=>{
   const v=$('#quickTitle').value; $('#quickTitle').value=''; await quickCapture(v);
@@ -888,9 +977,14 @@ $('#pastePreviewBtn').onclick=()=>{
   host.querySelector('#pasteAddBtn').onclick=async ev=>{
     ev.currentTarget.disabled=true;
     const keep=lines.filter((l,i)=>host.querySelector('[data-pl="'+i+'"]').checked);
-    for(const l of keep) await quickCapture(l);
-    $('#pasteText').value=''; host.innerHTML=''; $('#pasteArea').classList.add('hidden');
-    alert(keep.length+' task'+(keep.length===1?'':'s')+' added to the inbox. Check each one - anything misread is yours to fix.');
+    try{
+      const n=await quickCaptureMany(keep);
+      $('#pasteText').value=''; host.innerHTML=''; $('#pasteArea').classList.add('hidden');
+      flash(n+' task'+(n===1?'':'s')+' added to the inbox. Check each one - anything misread is yours to fix.');
+    }catch(e){
+      ev.currentTarget.disabled=false;
+      flash('Nothing was added - the batch is all-or-nothing, so no partial list was saved. It is safe to try again.');
+    }
   };
 };
 document.addEventListener('paste',async ev=>{
@@ -923,11 +1017,11 @@ $('#importBtn').onclick=()=>$('#importFile').click();
 $('#importFile').onchange=async ev=>{
   const f=ev.target.files[0]; ev.target.value=''; if(!f)return;
   try{ openRestoreSheet(JSON.parse(await f.text())); }
-  catch(e){ alert('That file does not look like a backup.'); }
+  catch(e){ flash('That file does not look like a backup.'); }
 };
 $('#importTextBtn').onclick=async()=>{
   try{ const v=$('#importText').value; openRestoreSheet(JSON.parse(v)); $('#importText').value=''; }
-  catch(e){ alert('That text does not look like a backup.'); }
+  catch(e){ flash('That text does not look like a backup.'); }
 };
 $('#sampleBtn').onclick=async()=>{
   await newTask({title:'Example: tidy the desk',kind:'task',size:15,col:'now',effort:'low',tags:['home-project']});
