@@ -120,14 +120,16 @@ h2.sec .n{font-family:var(--font-t);font-size:12px;color:var(--ink-3);font-weigh
       <input type="text" id="quickTitle" placeholder="What's on your mind?" enterkeyhint="done" autocomplete="off">
       <div class="row">
         <button class="btn primary" id="quickAddBtn">Add to inbox</button>
-        <button class="btn" id="quickPhotoBtn">📷 Photo</button>
+        <button class="btn" id="quickPhotoBtn">🖼 Photo / screenshot</button>
         <button class="btn" id="pasteListBtn">📋 Paste a list</button>
         <input type="file" id="quickPhotoFile" accept="image/*" class="hidden">
       </div>
+      <div class="cap" style="margin-top:6px">Photo: take a new one, or pick from your photo library or files (a screenshot lives there). Or copy an image and paste it straight onto this page.</div>
       <div id="pasteArea" class="hidden" style="margin-top:10px">
-        <textarea id="pasteText" placeholder="One task per line. Add #tags at the end of a line, e.g.&#10;Buy coffee #groceries&#10;Sort the boxes #home-project"></textarea>
-        <button class="btn soft" id="pasteMakeBtn">Make tasks</button>
-        <span class="cap">Handy after sending a photo of a paper list to Instinct - paste the draft list it gives back, then fix anything here.</span>
+        <textarea id="pasteText" placeholder="Paste a list straight from Notes or anywhere - one line per task.&#10;Add #tags at the end of a line, e.g. Buy coffee #groceries"></textarea>
+        <button class="btn soft" id="pastePreviewBtn">Review lines</button>
+        <div id="pastePreview"></div>
+        <div class="cap" style="margin-top:6px">Pasting brings the words only - ticks, crossings-out and formatting don't come along, so a finished item in Notes looks like any other line. You review every line before anything becomes a task.</div>
       </div>
     </div>
     <h2 class="sec">Inbox <span class="n" id="inboxCount"></span></h2>
@@ -136,6 +138,7 @@ h2.sec .n{font-family:var(--font-t);font-size:12px;color:var(--ink-3);font-weigh
   </section>
 
   <section id="view-now" class="view">
+    <div id="dueSoon"></div>
     <h2 class="sec">Must do this week <span class="n" id="mustCount"></span></h2>
     <div id="mustList"></div>
     <h2 class="sec">What fits right now</h2>
@@ -296,6 +299,7 @@ function migrate(t){
   if(t.effort!==null&&t.effort!=='low'&&t.effort!=='med'&&t.effort!=='high') t.effort=null;
   if(typeof t.dueDate==='undefined') t.dueDate=null;
   if(typeof t.mustWeek!=='boolean') t.mustWeek=false;
+  if(typeof t.mustWeekOf==='undefined') t.mustWeekOf=t.mustWeek?weekStart():null; // the week it was flagged for - a must is dated, not floating
   if(typeof t.doneDate==='undefined') t.doneDate=null; // v1 completions had no recorded date - shown as 'date not recorded'
   if(typeof t.outcome!=='string') t.outcome='';
   if(typeof t.ei==='undefined') t.ei=null;
@@ -383,12 +387,17 @@ function renderInbox(){
 function mustTasks(){return visibleTasks().filter(t=>t.mustWeek);}
 function renderNow(){
   const must=mustTasks().sort((a,b)=>a.order-b.order);
+  const wk=weekStart();
+  const mustCarried=must.filter(t=>t.mustWeekOf!==wk); // flagged for an earlier week - needs a fresh decision
+  const mustCur=must.filter(t=>t.mustWeekOf===wk);
   $('#mustCount').textContent=must.length?must.length+' flagged':'';
+  const dueSoon=visibleTasks().filter(t=>t.dueDate&&t.dueDate<=addDays(todayStr(),3)).sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
+  $('#dueSoon').innerHTML=dueSoon.length?'<div class="notice"><b>Due:</b> '+dueSoon.map(t=>esc(t.title)+' ('+(t.dueDate<todayStr()?'passed '+niceDate(t.dueDate):niceDate(t.dueDate))+')').join(' · ')+'</div>':'';
   const mh=$('#mustList');
-  if(!must.length){
+  if(!mustCur.length){
     mh.innerHTML='<div class="cap" style="padding:4px 2px">Nothing flagged yet. On any task, turn on "Must do this week" - no day needed.</div>';
   } else {
-    mh.innerHTML=must.map(t=>{
+    mh.innerHTML=mustCur.map(t=>{
       let ctl='<div class="ctl">'+(t.day?'<button data-unday="'+t.id+'">off '+niceDate(t.day)+'</button>':'<button data-day="'+t.id+'">pick a day</button>')+'<button data-done="'+t.id+'">✓ Done</button></div>';
       return cardHtml(t,{controls:ctl,showDay:false});
     }).join('');
@@ -396,6 +405,17 @@ function renderNow(){
   bindCards(mh);
   mh.querySelectorAll('[data-day]').forEach(el=>el.onclick=()=>openDayPicker(el.dataset.day));
   mh.querySelectorAll('[data-unday]').forEach(el=>el.onclick=async()=>{const t=task(el.dataset.unday);t.day=null;await saveTask(t);renderAll();});
+  if(mustCarried.length){
+    mh.innerHTML+='<h2 class="sec" style="margin-top:16px">Carried over from last week</h2>'
+      +'<div class="cap" style="margin-bottom:6px">These were must-do last week and didn\'t get done. They stay flagged only if you say so again.</div>'
+      +mustCarried.map(t=>{
+        const ctl='<div class="ctl"><button data-keepmust="'+t.id+'">Still must this week</button><button data-dropmust="'+t.id+'">Let it float</button><button data-done="'+t.id+'">✓ Done</button></div>';
+        return cardHtml(t,{controls:ctl,showDay:true});
+      }).join('');
+    mh.querySelectorAll('[data-keepmust]').forEach(el=>el.onclick=async()=>{const t=task(el.dataset.keepmust);t.mustWeekOf=weekStart();await saveTask(t);renderAll();});
+    mh.querySelectorAll('[data-dropmust]').forEach(el=>el.onclick=async()=>{const t=task(el.dataset.dropmust);t.mustWeek=false;t.mustWeekOf=null;await saveTask(t);renderAll();});
+    bindCards(mh);
+  }
   mh.querySelectorAll('[data-done]').forEach(el=>el.onclick=()=>openDoneSheet(el.dataset.done));
   // fit pickers
   $('#fitTimes').innerHTML='<button class="chip'+(!fitTime?' sel':'')+'" data-ft="">Any time</button>'
@@ -568,7 +588,7 @@ function openSheet(id,preset){
   html+='<div id="fKindExtra"></div>';
   html+='<label class="f">Notes</label><textarea id="fNotes" placeholder="Anything to remember">'+esc(t.notes)+'</textarea>';
   html+='<label class="f">Photos</label><div class="photos" id="fPhotos"></div>'
-      +'<button class="btn" id="fAddPhoto">📷 Add photo</button><input type="file" id="fPhotoFile" accept="image/*" class="hidden">';
+      +'<button class="btn" id="fAddPhoto">🖼 Add photo or screenshot</button><input type="file" id="fPhotoFile" accept="image/*" class="hidden">';
   html+='<div style="margin-top:16px">'
       +'<button class="btn primary" id="fSave">'+(isNew?'Add':'Save')+'</button>'
       +(isNew?'':'<button class="btn soft" id="fDone">Mark done</button><button class="btn warn" id="fDelete">Delete</button>')
@@ -594,7 +614,7 @@ function openSheet(id,preset){
   sh.querySelectorAll('[data-fsize]').forEach(b=>b.onclick=()=>{draft.size=+b.dataset.fsize;syncChips('fSizes',b);});
   sh.querySelectorAll('[data-fe]').forEach(b=>b.onclick=()=>{draft.effort=b.dataset.fe||null;syncChips('fEfforts',b);});
   sh.querySelectorAll('[data-fcol]').forEach(b=>b.onclick=()=>{draft.col=b.dataset.fcol;syncChips('fCols',b);});
-  sh.querySelectorAll('[data-fmust]').forEach(b=>b.onclick=()=>{draft.mustWeek=!!b.dataset.fmust;syncChips('fMust',b);});
+  sh.querySelectorAll('[data-fmust]').forEach(b=>b.onclick=()=>{draft.mustWeek=!!b.dataset.fmust;draft.mustWeekOf=draft.mustWeek?weekStart():null;syncChips('fMust',b);});
   sh.querySelectorAll('[data-fday]').forEach(b=>b.onclick=()=>{draft.day=b.dataset.fday||null;syncChips('fDays',b);});
   sh.querySelectorAll('[data-fkind]').forEach(b=>b.onclick=()=>{draft.kind=b.dataset.fkind;
     if(draft.kind==='chore'&&!draft.chore)draft.chore={everyN:1,unit:'weeks',lastDone:null};
@@ -665,19 +685,30 @@ function openDoneSheet(id){
   html+='<label class="f">When did you finish it?</label><input type="date" id="dDate" value="'+todayStr()+'">';
   html+='<label class="f">Outcome (optional - what happened, so you never have to remember)</label><input type="text" id="dOutcome" placeholder="e.g. Submitted, they confirm by email / Called, left a message">';
   if(job){
-    html+='<label class="f" style="margin-top:14px"><input type="checkbox" id="dEi" checked style="width:auto;margin-right:6px">Log it in the EI activity log (Job tracker)</label>';
-    html+='<div id="dEiExtra"><label class="f">Activity type</label><select id="dEiType">'
-      +EI_TYPES.map(x=>'<option>'+x+'</option>').join('')+'</select>'
-      +'<div class="cap" style="margin-top:6px">Writes one entry into the Job tracker\'s EI activity log when both apps share this browser\'s storage (for example, both open in the same Safari). Home-screen icons may keep separate storage, so check the Job tracker afterwards - the entry is always recorded here too, with its date and outcome.</div></div>';
+    if(t.ei){
+      html+='<div class="cap" style="margin-top:14px">Already logged in the EI activity log ('+esc(t.ei.type||'entry')+') - it will not be written twice.</div>';
+    } else {
+      html+='<label class="f" style="margin-top:14px"><input type="checkbox" id="dEi" checked style="width:auto;margin-right:6px">Log it in the EI activity log (Job tracker)</label>';
+      html+='<div id="dEiExtra"><label class="f">Activity type - pick what you actually did</label><select id="dEiType">'
+        +'<option value="" selected>Choose an activity type…</option>'
+        +EI_TYPES.map(x=>'<option>'+x+'</option>').join('')+'</select>'
+        +'<div class="cap" id="dEiWarn" style="margin-top:6px;color:var(--accent)"></div>'
+        +'<div class="cap" style="margin-top:6px">Writes one entry into the Job tracker\'s EI activity log when both apps share this browser\'s storage (for example, both open in the same Safari). Home-screen icons may keep separate storage, so check the Job tracker afterwards - the entry is always recorded here too, with its date and outcome.</div></div>';
+    }
   }
   html+='<div style="margin-top:16px"><button class="btn primary" id="dSave">Mark done</button><button class="btn" id="dCancel">Not yet</button></div>';
   sh.innerHTML=html; $('#sheetBack').classList.add('on'); sh.classList.add('on');
   $('#sheetX').onclick=closeSheet; $('#sheetBack').onclick=closeSheet; $('#dCancel').onclick=closeSheet;
-  if(job) $('#dEi').onchange=()=>$('#dEiExtra').classList.toggle('hidden',!$('#dEi').checked);
-  $('#dSave').onclick=async()=>{
+  if(job&&!t.ei) $('#dEi').onchange=()=>$('#dEiExtra').classList.toggle('hidden',!$('#dEi').checked);
+  $('#dSave').onclick=async ev=>{
+    ev.currentTarget.disabled=true; // double-tap cannot write twice
+    const wantEi=job&&!t.ei&&$('#dEi')&&$('#dEi').checked;
+    if(wantEi&&!$('#dEiType').value){
+      $('#dEiWarn').textContent='Pick the activity type that matches what you actually did, or untick the EI box.';
+      ev.currentTarget.disabled=false; return;
+    }
     t.doneDate=$('#dDate').value||todayStr();
     t.outcome=$('#dOutcome').value.trim();
-    const wantEi=job&&$('#dEi').checked;
     if(wantEi){
       const rec=writeEiRecord(t,$('#dEiType').value);
       t.ei=rec?{id:rec.id,type:rec.type}:null;
@@ -688,11 +719,12 @@ function openDoneSheet(id){
   };
 }
 function writeEiRecord(t,type){
+  if(!type) return null; // never guess an activity type
   try{
     const raw=localStorage.getItem(EI_LS_KEY);
     const arr=raw?JSON.parse(raw):[];
     if(!Array.isArray(arr)) throw new Error('bad log');
-    const rec={id:'tw-'+uid().slice(1),date:t.doneDate||todayStr(),type:type||EI_TYPES[0],
+    const rec={id:'tw-'+uid().slice(1),date:t.doneDate||todayStr(),type:type,
       posting:'',employer:'',contact:'',role:'',action:t.title,result:t.outcome||'',evidence:''};
     arr.push(rec);
     localStorage.setItem(EI_LS_KEY,JSON.stringify(arr));
@@ -782,8 +814,15 @@ async function exportBackup(){
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(a.href),5000);
 }
-async function importData(data){
+async function importData(data,opts){
   if(!data||!Array.isArray(data.tasks)) throw new Error('not a backup file');
+  if(opts&&opts.replace){ // remove anything on this device that the backup does not contain
+    const keepT=new Set(data.tasks.map(t=>t.id));
+    const keepP=new Set((data.photos||[]).map(p=>p.id));
+    for(const t of state.tasks) if(!keepT.has(t.id)) await idbDel('tasks',t.id);
+    const existing=await idbAll('photos');
+    for(const p of existing) if(!keepP.has(p.id)) await idbDel('photos',p.id);
+  }
   for(const s of (data.streams||[])) await idbPut('streams',s);
   for(const t of data.tasks) await idbPut('tasks',migrate(t)); // v1 rows gain the new fields here
   for(const p of (data.photos||[])){
@@ -791,6 +830,23 @@ async function importData(data){
     await idbPut('photos',{id:p.id,taskId:p.taskId||'',blob});
   }
   await loadAll(); renderAll();
+}
+function openRestoreSheet(data){
+  if(!data||!Array.isArray(data.tasks)) throw new Error('not a backup file');
+  const nT=data.tasks.length, nP=(data.photos||[]).length;
+  const hereOpen=state.tasks.filter(t=>!t.done).length, hereDone=state.tasks.filter(t=>t.done).length;
+  const sh=$('#sheet');
+  let html='<button class="x" id="sheetX">✕</button><h2>Restore a backup</h2>';
+  html+='<div class="cap">The backup holds <b>'+nT+' task'+(nT===1?'':'s')+'</b>'+(nP?' and '+nP+' photo'+(nP===1?'':'s'):'')+'. This device currently holds '+hereOpen+' open and '+hereDone+' done.</div>';
+  html+='<div style="margin-top:14px"><button class="btn primary" id="rMerge">Merge with what\'s here</button>'
+    +'<div class="cap" style="margin:4px 0 10px">Backup items are added or updated; anything only on this device stays.</div>'
+    +'<button class="btn warn" id="rReplace">Replace everything on this device</button>'
+    +'<div class="cap" style="margin:4px 0 10px">Wipes what\'s here first, then loads the backup. Export a copy first if unsure.</div>'
+    +'<button class="btn" id="rCancel">Cancel - change nothing</button></div>';
+  sh.innerHTML=html; $('#sheetBack').classList.add('on'); sh.classList.add('on');
+  $('#sheetX').onclick=closeSheet; $('#sheetBack').onclick=closeSheet; $('#rCancel').onclick=closeSheet;
+  $('#rMerge').onclick=async ev=>{ ev.currentTarget.disabled=true; await importData(data); closeSheet(); alert('Backup merged in.'); };
+  $('#rReplace').onclick=async ev=>{ ev.currentTarget.disabled=true; await importData(data,{replace:true}); closeSheet(); alert('This device now matches the backup.'); };
 }
 
 /* ============ capture: quick text, photo, pasted list ============ */
@@ -817,13 +873,37 @@ $('#quickPhotoFile').onchange=async ev=>{
   renderAll(); openSheet(t.id); // name it while it is fresh
 };
 $('#pasteListBtn').onclick=()=>$('#pasteArea').classList.toggle('hidden');
-$('#pasteMakeBtn').onclick=async()=>{
-  const lines=$('#pasteText').value.split('\n').map(l=>l.replace(/^[-*•\d.)\s]+/,'').trim()).filter(Boolean);
-  if(!lines.length)return;
-  for(const l of lines) await quickCapture(l);
-  $('#pasteText').value=''; $('#pasteArea').classList.add('hidden');
-  alert(lines.length+' task'+(lines.length===1?'':'s')+' added to the inbox. Check each one - anything misread is yours to fix.');
+function parseListLines(raw){
+  return (raw||'').split('\n').map(l=>l.replace(/^[-*•\d.)\s]+/,'').trim()).filter(Boolean);
+}
+$('#pastePreviewBtn').onclick=()=>{
+  const lines=parseListLines($('#pasteText').value);
+  const host=$('#pastePreview'); if(!lines.length){host.innerHTML='';return;}
+  host.innerHTML='<div class="cap" style="margin:8px 0 4px">Review first: untick anything that is not a task (a heading, a note to yourself). Ticked lines become inbox tasks.</div>'
+    +lines.map((l,i)=>{
+      const heading=/:\s*$/.test(l);
+      return '<label class="small" style="display:flex;gap:8px;align-items:flex-start;padding:4px 0"><input type="checkbox" data-pl="'+i+'"'+(heading?'':' checked')+' style="width:auto;margin-top:2px"><span>'+esc(l)+(heading?' <span class="cap">(looks like a heading)</span>':'')+'</span></label>';
+    }).join('')
+    +'<button class="btn primary" id="pasteAddBtn" style="margin-top:8px">Add the ticked tasks</button>';
+  host.querySelector('#pasteAddBtn').onclick=async ev=>{
+    ev.currentTarget.disabled=true;
+    const keep=lines.filter((l,i)=>host.querySelector('[data-pl="'+i+'"]').checked);
+    for(const l of keep) await quickCapture(l);
+    $('#pasteText').value=''; host.innerHTML=''; $('#pasteArea').classList.add('hidden');
+    alert(keep.length+' task'+(keep.length===1?'':'s')+' added to the inbox. Check each one - anything misread is yours to fix.');
+  };
 };
+document.addEventListener('paste',async ev=>{
+  const items=ev.clipboardData&&ev.clipboardData.items?[].slice.call(ev.clipboardData.items):[];
+  const img=items.find(it=>it.type&&it.type.indexOf('image/')===0);
+  if(!img)return; // ordinary text paste keeps working everywhere
+  const f=img.getAsFile(); if(!f)return;
+  ev.preventDefault();
+  const t=await newTask({title:'Photo note'});
+  const pid=await addPhoto(f,t.id);
+  t.photos.push(pid); await saveTask(t);
+  renderAll(); openSheet(t.id); // name it while it is fresh
+});
 
 /* ============ tabs, samples, wipe, init ============ */
 function switchView(id){
@@ -841,12 +921,12 @@ $('#addStreamBtn').onclick=async()=>{
 $('#exportBtn').onclick=exportBackup;
 $('#importBtn').onclick=()=>$('#importFile').click();
 $('#importFile').onchange=async ev=>{
-  const f=ev.target.files[0]; if(!f)return;
-  try{ await importData(JSON.parse(await f.text())); alert('Backup restored.'); }
+  const f=ev.target.files[0]; ev.target.value=''; if(!f)return;
+  try{ openRestoreSheet(JSON.parse(await f.text())); }
   catch(e){ alert('That file does not look like a backup.'); }
 };
 $('#importTextBtn').onclick=async()=>{
-  try{ await importData(JSON.parse($('#importText').value)); $('#importText').value=''; alert('Backup restored.'); }
+  try{ const v=$('#importText').value; openRestoreSheet(JSON.parse(v)); $('#importText').value=''; }
   catch(e){ alert('That text does not look like a backup.'); }
 };
 $('#sampleBtn').onclick=async()=>{
