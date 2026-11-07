@@ -37,7 +37,7 @@
   --r:14px; --font-d:Georgia,'Times New Roman',serif; --font-t:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;padding:0;background:var(--paper);color:var(--ink);font-family:var(--font-t);font-size:16px;line-height:1.45}
+html,body{margin:0;padding:0;background:var(--paper);color:var(--ink);font-family:var(--font-t);font-size:16px;line-height:1.45;overflow-x:hidden}
 body{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
 button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:pointer}
 input,textarea,select{font:inherit;color:inherit}
@@ -69,7 +69,9 @@ h2.sec .n{font-family:var(--font-t);font-size:12px;color:var(--ink-3);font-weigh
 .capturebox input{width:100%;border:1px solid var(--line);border-radius:12px;padding:13px 14px;font-size:16px;background:#fff}
 .capturebox .row{display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap}
 /* task cards */
-.tcard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:6px 0}
+.tcard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:6px 0;position:relative;touch-action:pan-y;transition:transform .15s ease}
+.tcard.swiping{transition:none}
+.swipe-del{position:absolute;right:-84px;top:-1px;bottom:-1px;width:80px;background:#a3534f;color:#fff;border:1px solid #a3534f;border-radius:0 12px 12px 0;font-size:14px}
 .tcard .tt{font-size:15px}
 .tcard .meta{display:flex;align-items:center;gap:8px;margin-top:5px;flex-wrap:wrap;font-size:12px;color:var(--ink-2)}
 .tcard .ctl{display:flex;gap:4px;margin-top:7px;flex-wrap:wrap}
@@ -296,7 +298,20 @@ function isParked(t){return t.notBefore && t.notBefore>todayStr();}
 function visibleTasks(){return state.tasks.filter(t=>!t.done);}
 function courseLeft(t){return Math.max(0,(t.course? (t.course.totalMin-t.course.loggedMin):0));}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-function flash(msg){const el=$('#statusLine');el.textContent=msg;el.classList.remove('hidden');clearTimeout(flash._t);flash._t=setTimeout(()=>el.classList.add('hidden'),8000);window.scrollTo(0,0);}
+function flash(msg,action){
+  const el=$('#statusLine');
+  el.textContent=msg;
+  if(action){
+    const b=document.createElement('button');
+    b.className='mini'; b.textContent=action.label; b.style.marginLeft='8px';
+    b.onclick=async()=>{ el.classList.add('hidden'); await action.fn(); };
+    el.appendChild(b);
+  }
+  el.classList.remove('hidden');
+  clearTimeout(flash._t);
+  if(!action) flash._t=setTimeout(()=>el.classList.add('hidden'),8000); // undo offers stay until used or the next render
+  window.scrollTo(0,0);
+}
 function isJobTask(t){return (t.tags||[]).some(g=>g.indexOf('job')!==-1);}
 function allTags(){
   const m=new Map();
@@ -375,10 +390,67 @@ function cardHtml(t,opts){
     +'</div>';
 }
 function bindCards(host){
-  host.querySelectorAll('[data-open]').forEach(el=>el.onclick=ev=>{
-    if(ev.target.closest('button'))return;
-    openSheet(el.dataset.open);
+  host.querySelectorAll('[data-open]').forEach(el=>{
+    el.onclick=ev=>{
+      if(ev.target.closest('button'))return;
+      if(el.dataset.swiped==='1'){closeSwipe(el);return;} // first tap closes an open swipe, never opens the sheet
+      openSheet(el.dataset.open);
+    };
+    bindSwipe(el,el.dataset.open);
   });
+}
+/* swipe left to reveal Delete (touch only; the task sheet's Delete button remains the non-gesture route) */
+function bindSwipe(card,id){
+  let sx=0,sy=0,dx=0,mode=null;
+  card.addEventListener('touchstart',e=>{
+    const t=e.touches[0]; sx=t.clientX; sy=t.clientY; dx=0; mode=null;
+  },{passive:true});
+  card.addEventListener('touchmove',e=>{
+    const t=e.touches[0];
+    if(mode===null){
+      const ax=Math.abs(t.clientX-sx), ay=Math.abs(t.clientY-sy);
+      if(ay>10&&ay>=ax){mode='scroll';return;} // vertical wins - scrolling is never blocked
+      if(ax>12&&ax>ay){mode='swipe'; closeSwipeOthers(card); ensureSwipeBtn(card,id);}
+      else return;
+    }
+    if(mode!=='swipe')return;
+    e.preventDefault();
+    dx=Math.min(0,t.clientX-sx);
+    card.classList.add('swiping');
+    card.style.transform='translateX('+Math.max(-84,dx)+'px)';
+  },{passive:false});
+  card.addEventListener('touchend',()=>{
+    card.classList.remove('swiping');
+    if(mode!=='swipe')return;
+    if(dx<-48) openSwipe(card,id); else closeSwipe(card);
+    mode=null;
+  });
+}
+function ensureSwipeBtn(card,id){
+  if(card.querySelector('.swipe-del')) return;
+  const b=document.createElement('button');
+  b.className='swipe-del'; b.textContent='Delete';
+  b.onclick=async ev=>{ ev.stopPropagation(); await swipeDelete(id); };
+  card.appendChild(b);
+}
+function openSwipe(card,id){
+  card.style.transform='translateX(-84px)';
+  card.dataset.swiped='1';
+  ensureSwipeBtn(card,id);
+}
+function closeSwipe(card){ card.style.transform=''; card.dataset.swiped=''; const b=card.querySelector('.swipe-del'); if(b)b.remove(); }
+function closeSwipeOthers(except){ document.querySelectorAll('.tcard[data-swiped="1"]').forEach(c=>{ if(c!==except) closeSwipe(c); }); }
+async function swipeDelete(id){
+  const t=task(id); if(!t)return;
+  const stash=JSON.parse(JSON.stringify(t));
+  const photoIds=new Set(t.photos||[]);
+  const stashPhotos=(await idbAll('photos')).filter(p=>photoIds.has(p.id)); // kept so Undo restores pictures too
+  await removeTask(id);
+  renderAll();
+  flash('Deleted "'+(stash.title.length>40?stash.title.slice(0,40)+'…':stash.title)+'".', {label:'Undo',fn:async()=>{
+    await idbBulk(['tasks','photos'],io=>{ io.put('tasks',stash); for(const p of stashPhotos) io.put('photos',p); });
+    await loadAll(); renderAll();
+  }});
 }
 /* ----- Inbox ----- */
 function renderInbox(){
@@ -968,18 +1040,37 @@ $('#pasteListBtn').onclick=()=>$('#pasteArea').classList.toggle('hidden');
 function parseListLines(raw){
   return (raw||'').split('\n').map(l=>l.replace(/^[-*•\d.)\s]+/,'').trim()).filter(Boolean);
 }
+function tagFromHeading(l){
+  const t=l.replace(/:\s*$/,'').toLowerCase().replace(/[^a-z0-9\s-]/g,'').replace(/\s+/g,'-').replace(/^-+|-+$/g,'');
+  return t||null;
+}
 $('#pastePreviewBtn').onclick=()=>{
   const lines=parseListLines($('#pasteText').value);
   const host=$('#pastePreview'); if(!lines.length){host.innerHTML='';return;}
-  host.innerHTML='<div class="cap" style="margin:8px 0 4px">Review first: untick anything that is not a task (a heading, a note to yourself). Ticked lines become inbox tasks.</div>'
-    +lines.map((l,i)=>{
-      const heading=/:\s*$/.test(l);
-      return '<label class="small" style="display:flex;gap:8px;align-items:flex-start;padding:4px 0"><input type="checkbox" data-pl="'+i+'"'+(heading?'':' checked')+' style="width:auto;margin-top:2px"><span>'+esc(l)+(heading?' <span class="cap">(looks like a heading)</span>':'')+'</span></label>';
-    }).join('')
+  // colon-ending lines start marked as headings, but every line can be flipped either way - nothing is decided for him
+  const isHeading=lines.map(l=>/:\s*$/.test(l));
+  host.innerHTML='<div class="cap" style="margin:8px 0 4px">Ticked lines become tasks. Tap <b>heading</b> on a line that groups the ones below it - it is never added as a task; instead it becomes a #tag on the ticked lines under it.</div>'
+    +lines.map((l,i)=>'<div class="small" data-row="'+i+'" style="display:flex;gap:8px;align-items:center;padding:5px 0">'
+      +'<input type="checkbox" data-pl="'+i+'"'+(isHeading[i]?' disabled':' checked')+' style="width:auto;margin:0;flex:none">'
+      +'<span style="flex:1;'+(isHeading[i]?'font-weight:600':'')+'" data-lt="'+i+'">'+esc(l)+'</span>'
+      +'<button class="mini" data-hd="'+i+'" style="flex:none;'+(isHeading[i]?'font-weight:600;border-color:var(--ink);color:var(--ink)':'')+'">heading</button>'
+      +'</div>').join('')
     +'<button class="btn primary" id="pasteAddBtn" style="margin-top:8px">Add the ticked tasks</button>';
+  host.querySelectorAll('[data-hd]').forEach(b=>b.onclick=()=>{
+    const i=+b.dataset.hd; isHeading[i]=!isHeading[i];
+    const cb=host.querySelector('[data-pl="'+i+'"]');
+    const lt=host.querySelector('[data-lt="'+i+'"]');
+    b.style.fontWeight=isHeading[i]?'600':''; b.style.borderColor=isHeading[i]?'var(--ink)':''; b.style.color=isHeading[i]?'var(--ink)':'';
+    lt.style.fontWeight=isHeading[i]?'600':'';
+    if(isHeading[i]){cb.checked=false; cb.disabled=true;} else {cb.disabled=false; cb.checked=true;}
+  });
   host.querySelector('#pasteAddBtn').onclick=async ev=>{
     ev.currentTarget.disabled=true;
-    const keep=lines.filter((l,i)=>host.querySelector('[data-pl="'+i+'"]').checked);
+    const keep=[]; let curTag=null;
+    lines.forEach((l,i)=>{
+      if(isHeading[i]){ curTag=tagFromHeading(l); return; }
+      if(host.querySelector('[data-pl="'+i+'"]').checked) keep.push(curTag?l+' #'+curTag:l);
+    });
     try{
       const n=await quickCaptureMany(keep);
       $('#pasteText').value=''; host.innerHTML=''; $('#pasteArea').classList.add('hidden');
