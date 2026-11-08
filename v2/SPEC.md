@@ -45,6 +45,15 @@ preserves).
   within 3 days or passed is named in a notice at the top of the Now
   screen, so a hard deadline never depends on remembering to open the
   collapsed week view.
+- **Picking a planned day.** The day picker offers the next seven days
+  starting today (never a row of days already gone) plus an any-date
+  field, so a plan can land on any future - or past - date. The same
+  chips plus any-date field live on the task sheet. A task planned past
+  this week is not lost: the week view lists it under "Coming weeks",
+  and a planned day that slips by is listed under "Planned days that
+  have passed", each tappable to re-plan or finish. The native date
+  field uses the phone's own date wheel; verified in desktop Chrome's
+  mobile emulation, expected but untested on an actual iPhone.
 - **Completion is a record.** Marking done asks when (defaults to today)
   and an optional outcome. The Done screen is a dated log - no relying on
   memory. Chores now write a done record and spawn their next parked
