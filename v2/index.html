@@ -548,6 +548,19 @@ function renderWeek(){
     for(const t of list) html+=cardHtml(t);
     html+='</div>';
   }
+  const wEnd=addDays(ws,6);
+  const slipped=visibleTasks().filter(t=>t.day&&t.day<ws).sort((a,b)=>a.day.localeCompare(b.day));
+  const future=visibleTasks().filter(t=>t.day&&t.day>wEnd).sort((a,b)=>a.day.localeCompare(b.day));
+  if(slipped.length){ // a planned day that went by must never strand the task
+    html+='<h2 class="sec" style="margin-top:14px">Planned days that have passed</h2>'
+      +'<div class="cap" style="margin-bottom:6px">The day you picked has gone by. Tap one to pick a new day or mark it done.</div>'
+      +slipped.map(t=>cardHtml(t,{showDay:true})).join('');
+  }
+  if(future.length){ // planned beyond this week stays visible and tappable, not lost
+    html+='<h2 class="sec" style="margin-top:14px">Coming weeks</h2>'
+      +'<div class="cap" style="margin-bottom:6px">Planned past this week. They wait here until their week arrives.</div>'
+      +future.map(t=>cardHtml(t,{showDay:true})).join('');
+  }
   host.innerHTML=html;
   bindCards(host);
   host.querySelectorAll('[data-add-day]').forEach(el=>el.onclick=()=>openSheet(null,{day:el.dataset.addDay}));
@@ -666,7 +679,8 @@ function openSheet(id,preset){
   html+='<label class="f">Due date (optional - the hard deadline, not the day you plan to do it)</label><input type="date" id="fDue" value="'+(t.dueDate||'')+'">';
   html+='<label class="f">Planned day (optional - your rough plan; changing it never moves the due date)</label><div id="fDays">'
       +'<button class="chip'+(!t.day?' sel':'')+'" data-fday="">No day</button>'
-      +(function(){let h='';const ws=weekStart();for(let i=0;i<7;i++){const ds=addDays(ws,i);h+='<button class="chip'+(t.day===ds?' sel':'')+'" data-fday="'+ds+'">'+niceDate(ds)+'</button>';}return h;})()+'</div>';
+      +(function(){let h='';for(let i=0;i<7;i++){const ds=addDays(todayStr(),i);const label=i===0?'Today':i===1?'Tmrw':niceDate(ds);h+='<button class="chip'+(t.day===ds?' sel':'')+'" data-fday="'+ds+'">'+label+'</button>';}return h;})()+'</div>'
+      +'<input type="date" id="fDayAny" value="'+(t.day||'')+'" style="margin-top:6px">';
   html+='<label class="f">Not before (optional - parks it until that date)</label><input type="date" id="fNotBefore" value="'+(t.notBefore||'')+'">';
   html+='<label class="f">Type</label><div id="fKinds">'
       +[['task','One-off'],['chore','Recurring chore'],['course','Finite course / project']].map(([k,n])=>'<button class="chip'+(t.kind===k?' sel':'')+'" data-fkind="'+k+'">'+n+'</button>').join('')+'</div>';
@@ -700,7 +714,13 @@ function openSheet(id,preset){
   sh.querySelectorAll('[data-fe]').forEach(b=>b.onclick=()=>{draft.effort=b.dataset.fe||null;syncChips('fEfforts',b);});
   sh.querySelectorAll('[data-fcol]').forEach(b=>b.onclick=()=>{draft.col=b.dataset.fcol;syncChips('fCols',b);});
   sh.querySelectorAll('[data-fmust]').forEach(b=>b.onclick=()=>{draft.mustWeek=!!b.dataset.fmust;draft.mustWeekOf=draft.mustWeek?weekStart():null;syncChips('fMust',b);});
-  sh.querySelectorAll('[data-fday]').forEach(b=>b.onclick=()=>{draft.day=b.dataset.fday||null;syncChips('fDays',b);});
+  sh.querySelectorAll('[data-fday]').forEach(b=>b.onclick=()=>{draft.day=b.dataset.fday||null;syncChips('fDays',b);$('#fDayAny').value=draft.day||'';});
+  $('#fDayAny').onchange=ev=>{ // any date beyond this week; chips cover this week, the input covers everything
+    draft.day=ev.target.value||null;
+    const chips=document.getElementById('fDays'); chips.querySelectorAll('.chip').forEach(c=>c.classList.remove('sel'));
+    const match=chips.querySelector('[data-fday="'+draft.day+'"]');
+    if(match) match.classList.add('sel'); else if(!draft.day) chips.querySelector('[data-fday=""]').classList.add('sel');
+  };
   sh.querySelectorAll('[data-fkind]').forEach(b=>b.onclick=()=>{draft.kind=b.dataset.fkind;
     if(draft.kind==='chore'&&!draft.chore)draft.chore={everyN:1,unit:'weeks',lastDone:null};
     if(draft.kind==='course'&&!draft.course)draft.course={totalText:'',totalMin:0,loggedMin:0};
@@ -918,19 +938,22 @@ async function loadPhotoURLs(){
 
 /* ============ day picker ============ */
 function openDayPicker(id){
-  const ws=weekStart(); const sh=$('#sheet');
+  const sh=$('#sheet');
   let html='<button class="x" id="sheetX">✕</button><h2>Put it on a day</h2>';
   html+='<div class="cap">A rough plan - the due date, if it has one, does not move.</div><div style="margin-top:10px">';
-  for(let i=0;i<7;i++){const ds=addDays(ws,i);
-    html+='<button class="btn" data-pick="'+ds+'">'+niceDate(ds)+'</button>';
+  for(let i=0;i<7;i++){const ds=addDays(todayStr(),i); // the next seven days, today first - never a row of days already gone
+    const label=i===0?'Today ('+niceDate(ds)+')':i===1?'Tomorrow ('+niceDate(ds)+')':niceDate(ds);
+    html+='<button class="btn" data-pick="'+ds+'">'+label+'</button>';
   }
-  html+='</div>';
+  html+='</div><label class="f" style="margin-top:14px">Or any date</label><input type="date" id="dayAny">';
   sh.innerHTML=html; $('#sheetBack').classList.add('on'); sh.classList.add('on');
   $('#sheetX').onclick=closeSheet; $('#sheetBack').onclick=closeSheet;
-  sh.querySelectorAll('[data-pick]').forEach(b=>b.onclick=async()=>{
-    const t=task(id); t.day=b.dataset.pick; await saveTask(t); closeSheet(); renderAll(); switchView('view-now');
+  const setDay=async ds=>{
+    const t=task(id); t.day=ds; await saveTask(t); closeSheet(); renderAll(); switchView('view-now');
     $('#weekCard').classList.remove('collapsed');
-  });
+  };
+  sh.querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>setDay(b.dataset.pick));
+  $('#dayAny').onchange=ev=>{ if(ev.target.value) setDay(ev.target.value); };
 }
 
 /* ============ export / import (v2 format; reads v1 backups too) ============ */
