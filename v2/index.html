@@ -1104,6 +1104,30 @@ $('#pastePreviewBtn').onclick=()=>{
     }
   };
 };
+// Text read out of a photo/screenshot/Note (by the iPhone Shortcut, or pasted by hand) lands in the
+// same review step as any pasted list - it is shown, never added on its own.
+function openPasteReview(text){
+  if(!text||!text.trim())return false;
+  switchView('view-inbox');
+  $('#pasteArea').classList.remove('hidden');
+  $('#pasteText').value=text.replace(/\r\n?/g,'\n');
+  $('#pastePreviewBtn').click();
+  $('#pasteArea').scrollIntoView({block:'start'});
+  return true;
+}
+$('#pasteText').addEventListener('paste',()=>setTimeout(()=>{
+  if($('#pasteText').value.trim()) $('#pastePreviewBtn').click();
+},0));
+// The Shortcut opens .../v2/#capture=<url-encoded text>. The text rides in the #fragment, which browsers
+// never send to the web server, then is wiped from the address bar so a reload cannot re-import it.
+function takeCaptureFromURL(){
+  const m=/^#capture=(.*)$/s.exec(location.hash||''); if(!m)return;
+  let text=''; try{ text=decodeURIComponent(m[1].replace(/\+/g,'%20')); }catch(e){ text=''; }
+  history.replaceState(null,'',location.pathname+location.search);
+  if(openPasteReview(text)) flash('Text from your Shortcut is below - untick anything that should not become a task.');
+  else flash('The Shortcut opened the app but sent no text - the photo may not have had readable words.');
+}
+window.addEventListener('hashchange',takeCaptureFromURL);
 document.addEventListener('paste',async ev=>{
   const items=ev.clipboardData&&ev.clipboardData.items?[].slice.call(ev.clipboardData.items):[];
   const img=items.find(it=>it.type&&it.type.indexOf('image/')===0);
@@ -1164,6 +1188,7 @@ async function loadAll(){
   renderPersistNotice();
   await loadAll();
   renderAll();
+  takeCaptureFromURL();
 })();
 </script>
 </body>

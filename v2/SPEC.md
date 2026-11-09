@@ -92,6 +92,18 @@ preserves).
   Notes brings the words only: ticks, crossings-out and formatting do not
   survive the clipboard, so a finished item looks like any other line and
   the review step is where it gets unticked.
+- **Text out of photos, screenshots and Notes (iPhone Shortcut).** The
+  app still does not read images. Instead, a "Send to This Week" Shortcut
+  (build steps in `SHORTCUT.md`) uses the iPhone's own on-device text
+  recognition, copies the result, and opens the app at
+  `v2/#capture=<url-encoded text>`. The app reads the fragment (never sent
+  to the server), clears it from the address bar so a reload cannot
+  re-import, and fills the paste review - nothing is added until the owner
+  taps "Add the ticked tasks". Pasting text into the list box also opens
+  the review straight away. Verified in desktop Chrome's mobile emulation
+  (arrival on load and while open, headings to tags, empty capture, reload,
+  manual paste); the Shortcut itself and whether a home-screen install
+  shares storage with Safari are untested on an actual iPhone.
 - **Delete: swipe or button, with undo.** On a touch screen, swiping a
   task card left reveals a red Delete button (vertical scrolling still
   wins - a mostly-up-down drag never triggers it), and tapping anywhere
